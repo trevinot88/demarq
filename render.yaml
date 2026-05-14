@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: constructor-admin
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DB_PATH
+        value: /var/data/constructor.db
+    disk:
+      name: sqlite-data
+      mountPath: /var/data
+      sizeGB: 1
