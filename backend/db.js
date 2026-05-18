@@ -1,6 +1,10 @@
 'use strict';
 const { Pool } = require('pg');
 
+if (!process.env.DATABASE_URL) {
+  console.warn('⚠️  DATABASE_URL not set — set it in .env for local development');
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -11,7 +15,6 @@ const db = {
   query: (sql, params = []) => pool.query(sql, params),
 };
 
-// ── Schema initialization ────────────────────────────────────────────────────
 async function initSchema() {
   const statements = [
     `CREATE TABLE IF NOT EXISTS projects (
@@ -73,8 +76,30 @@ async function initSchema() {
   }
 }
 
-initSchema()
-  .then(() => console.log('✅ DB schema ready'))
-  .catch(err => { console.error('Schema init failed:', err); process.exit(1); });
+// ── Schema initialization with retry ────────────────────────────────────────
+if (!process.env.DATABASE_URL) {
+  console.warn('⚠️  DATABASE_URL not set — DB disabled (set it in .env)');
+} else {
+  const RETRY_ATTEMPTS = 15;
+  const RETRY_DELAY_MS = 4000;
+
+  (async () => {
+    for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+      try {
+        await initSchema();
+        console.log('✅ DB schema ready');
+        return;
+      } catch (err) {
+        console.error(`DB init attempt ${attempt}/${RETRY_ATTEMPTS} failed: ${err.message}`);
+        if (attempt < RETRY_ATTEMPTS) {
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        } else {
+          console.error('DB init failed after all retries, exiting');
+          process.exit(1);
+        }
+      }
+    }
+  })();
+}
 
 module.exports = db;
