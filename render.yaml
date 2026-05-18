@@ -6,7 +6,7 @@ services:
   - type: web
     name: demarq
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: NODE_ENV=development npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
