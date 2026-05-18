@@ -4,11 +4,11 @@ const db = require('../db');
 const ExcelJS = require('exceljs');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function getReportDetail(id) {
-  const report = db.prepare(`SELECT * FROM weekly_reports WHERE id = ?`).get(id);
+async function getReportDetail(id) {
+  const report = (await db.query(`SELECT * FROM weekly_reports WHERE id = $1`, [id])).rows[0];
   if (!report) return null;
 
-  const entries = db.prepare(`
+  const { rows: entries } = await db.query(`
     SELECT re.id, re.contractor_id, re.project_id,
            re.ent_a_cta, re.rep_a_cta, re.notes,
            c.name  AS contractor_name,
@@ -20,9 +20,9 @@ function getReportDetail(id) {
     LEFT JOIN contractor_project_budgets cpb
            ON cpb.contractor_id = re.contractor_id
           AND cpb.project_id   = re.project_id
-    WHERE re.report_id = ?
+    WHERE re.report_id = $1
     ORDER BY p.name, c.name
-  `).all(id);
+  `, [id]);
 
   const enriched = entries.map(e => ({
     ...e,
@@ -30,7 +30,6 @@ function getReportDetail(id) {
     saldo_final: e.vp - e.ent_a_cta - e.rep_a_cta,
   }));
 
-  // Agrupar por proyecto
   const projectMap = new Map();
   for (const e of enriched) {
     if (!projectMap.has(e.project_id)) {
@@ -39,11 +38,10 @@ function getReportDetail(id) {
     projectMap.get(e.project_id).entries.push(e);
   }
 
-  const officePayments = db.prepare(
-    `SELECT * FROM office_payments WHERE report_id = ? ORDER BY id`
-  ).all(id);
+  const { rows: officePayments } = await db.query(
+    `SELECT * FROM office_payments WHERE report_id = $1 ORDER BY id`, [id]
+  );
 
-  // Resumen por contratista (suma todos sus proyectos)
   const summaryMap = new Map();
   for (const e of enriched) {
     if (!summaryMap.has(e.contractor_id)) {
@@ -69,134 +67,187 @@ function getReportDetail(id) {
   };
 }
 
-// ── GET /api/reports  ─────────────────────────────────────────────────────────
-router.get('/', (req, res) => {
-  const rows = db.prepare(`
-    SELECT wr.*,
-      COALESCE(SUM(re.rep_a_cta), 0) AS total_rep_proyectos,
-      COALESCE((SELECT SUM(amount) FROM office_payments op WHERE op.report_id = wr.id), 0) AS total_oficina
-    FROM weekly_reports wr
-    LEFT JOIN report_entries re ON re.report_id = wr.id
-    GROUP BY wr.id
-    ORDER BY wr.week_date DESC
-  `).all();
-  const result = rows.map(r => ({
-    ...r,
-    total_general: r.total_rep_proyectos + r.total_oficina,
-  }));
-  res.json(result);
+// ── GET /api/reports ──────────────────────────────────────────────────────────
+router.get('/', async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT wr.*,
+        COALESCE(SUM(re.rep_a_cta), 0) AS total_rep_proyectos,
+        COALESCE((SELECT SUM(amount) FROM office_payments op WHERE op.report_id = wr.id), 0) AS total_oficina
+      FROM weekly_reports wr
+      LEFT JOIN report_entries re ON re.report_id = wr.id
+      GROUP BY wr.id
+      ORDER BY wr.week_date DESC
+    `);
+    const result = rows.map(r => ({
+      ...r,
+      total_general: Number(r.total_rep_proyectos) + Number(r.total_oficina),
+    }));
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── POST /api/reports  ────────────────────────────────────────────────────────
-router.post('/', (req, res) => {
+// ── POST /api/reports ─────────────────────────────────────────────────────────
+router.post('/', async (req, res) => {
   const { week_date } = req.body;
   if (!week_date) return res.status(400).json({ error: 'week_date requerido' });
 
-  const exists = db.prepare(`SELECT id FROM weekly_reports WHERE week_date = ?`).get(week_date);
-  if (exists) return res.status(409).json({ error: 'Semana ya registrada' });
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const reportId = db.prepare(`INSERT INTO weekly_reports (week_date) VALUES (?)`).run(week_date).lastInsertRowid;
-
-  // Semana anterior
-  const prev = db.prepare(`
-    SELECT id FROM weekly_reports WHERE week_date < ? ORDER BY week_date DESC LIMIT 1
-  `).get(week_date);
-
-  // Todos los pares contratista-proyecto activos
-  const pairs = db.prepare(`
-    SELECT cpb.contractor_id, cpb.project_id
-    FROM contractor_project_budgets cpb
-    JOIN projects p ON p.id = cpb.project_id
-    WHERE p.status = 'active'
-  `).all();
-
-  const insEntry = db.prepare(`
-    INSERT OR IGNORE INTO report_entries (report_id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes)
-    VALUES (?, ?, ?, ?, 0, '')
-  `);
-
-  for (const { contractor_id, project_id } of pairs) {
-    let ent_a_cta = 0;
-    if (prev) {
-      const prevEntry = db.prepare(`
-        SELECT ent_a_cta, rep_a_cta FROM report_entries
-        WHERE report_id = ? AND contractor_id = ? AND project_id = ?
-      `).get(prev.id, contractor_id, project_id);
-      if (prevEntry) {
-        ent_a_cta = prevEntry.ent_a_cta + prevEntry.rep_a_cta;
-      }
+    const exists = (await client.query(
+      `SELECT id FROM weekly_reports WHERE week_date = $1`, [week_date]
+    )).rows[0];
+    if (exists) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Semana ya registrada' });
     }
-    insEntry.run(reportId, contractor_id, project_id, ent_a_cta);
+
+    const reportId = (await client.query(
+      `INSERT INTO weekly_reports (week_date) VALUES ($1) RETURNING id`, [week_date]
+    )).rows[0].id;
+
+    const prev = (await client.query(
+      `SELECT id FROM weekly_reports WHERE week_date < $1 ORDER BY week_date DESC LIMIT 1`, [week_date]
+    )).rows[0];
+
+    const { rows: pairs } = await client.query(`
+      SELECT cpb.contractor_id, cpb.project_id
+      FROM contractor_project_budgets cpb
+      JOIN projects p ON p.id = cpb.project_id
+      WHERE p.status = 'active'
+    `);
+
+    for (const { contractor_id, project_id } of pairs) {
+      let ent_a_cta = 0;
+      if (prev) {
+        const prevEntry = (await client.query(
+          `SELECT ent_a_cta, rep_a_cta FROM report_entries
+           WHERE report_id = $1 AND contractor_id = $2 AND project_id = $3`,
+          [prev.id, contractor_id, project_id]
+        )).rows[0];
+        if (prevEntry) ent_a_cta = prevEntry.ent_a_cta + prevEntry.rep_a_cta;
+      }
+      await client.query(`
+        INSERT INTO report_entries (report_id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes)
+        VALUES ($1, $2, $3, $4, 0, '')
+        ON CONFLICT (report_id, contractor_id, project_id) DO NOTHING
+      `, [reportId, contractor_id, project_id, ent_a_cta]);
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ id: reportId, week_date });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
   }
-
-  res.status(201).json({ id: reportId, week_date });
 });
 
-// ── GET /api/reports/:id  ─────────────────────────────────────────────────────
-router.get('/:id', (req, res) => {
-  const detail = getReportDetail(req.params.id);
-  if (!detail) return res.status(404).json({ error: 'Semana no encontrada' });
-  res.json(detail);
+// ── GET /api/reports/:id ──────────────────────────────────────────────────────
+router.get('/:id', async (req, res) => {
+  try {
+    const detail = await getReportDetail(req.params.id);
+    if (!detail) return res.status(404).json({ error: 'Semana no encontrada' });
+    res.json(detail);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── DELETE /api/reports/:id  ──────────────────────────────────────────────────
-router.delete('/:id', (req, res) => {
-  db.prepare(`DELETE FROM weekly_reports WHERE id = ?`).run(req.params.id);
-  res.json({ ok: true });
+// ── DELETE /api/reports/:id ───────────────────────────────────────────────────
+router.delete('/:id', async (req, res) => {
+  try {
+    await db.query(`DELETE FROM weekly_reports WHERE id = $1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── PUT /api/reports/:id/entries/:entryId  ────────────────────────────────────
-router.put('/:id/entries/:entryId', (req, res) => {
-  const { ent_a_cta, rep_a_cta, notes } = req.body;
-  db.prepare(`
-    UPDATE report_entries
-       SET ent_a_cta = COALESCE(?, ent_a_cta),
-           rep_a_cta = COALESCE(?, rep_a_cta),
-           notes     = COALESCE(?, notes)
-     WHERE id = ? AND report_id = ?
-  `).run(ent_a_cta, rep_a_cta, notes, req.params.entryId, req.params.id);
-  res.json({ ok: true });
+// ── PUT /api/reports/:id/entries/:entryId ────────────────────────────────────
+router.put('/:id/entries/:entryId', async (req, res) => {
+  try {
+    const { ent_a_cta, rep_a_cta, notes } = req.body;
+    await db.query(`
+      UPDATE report_entries
+         SET ent_a_cta = COALESCE($1, ent_a_cta),
+             rep_a_cta = COALESCE($2, rep_a_cta),
+             notes     = COALESCE($3, notes)
+       WHERE id = $4 AND report_id = $5
+    `, [ent_a_cta ?? null, rep_a_cta ?? null, notes ?? null, req.params.entryId, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── POST /api/reports/:id/entries  — agregar contratista ad-hoc ───────────────
-router.post('/:id/entries', (req, res) => {
+// ── POST /api/reports/:id/entries ─────────────────────────────────────────────
+router.post('/:id/entries', async (req, res) => {
   const { contractor_id, project_id, ent_a_cta = 0, rep_a_cta = 0, notes = '', vp } = req.body;
   if (!contractor_id || !project_id) return res.status(400).json({ error: 'contractor_id y project_id requeridos' });
-
-  // Actualizar VP si se envió
-  if (vp !== undefined) {
-    db.prepare(`
-      INSERT INTO contractor_project_budgets (contractor_id, project_id, valor_presupuesto)
-      VALUES (?, ?, ?)
-      ON CONFLICT(contractor_id, project_id) DO UPDATE SET valor_presupuesto = excluded.valor_presupuesto
-    `).run(contractor_id, project_id, vp);
-  }
-
   try {
-    const r = db.prepare(`
+    if (vp !== undefined) {
+      await db.query(`
+        INSERT INTO contractor_project_budgets (contractor_id, project_id, valor_presupuesto)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (contractor_id, project_id) DO UPDATE SET valor_presupuesto = EXCLUDED.valor_presupuesto
+      `, [contractor_id, project_id, vp]);
+    }
+    const { rows } = await db.query(`
       INSERT INTO report_entries (report_id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(req.params.id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes);
-    res.status(201).json({ id: r.lastInsertRowid });
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, [req.params.id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes]);
+    res.status(201).json({ id: rows[0].id });
   } catch (e) {
     res.status(409).json({ error: 'Entrada ya existe para ese contratista/proyecto' });
   }
 });
 
-// ── DELETE /api/reports/:id/entries/:entryId  ────────────────────────────────
-router.delete('/:id/entries/:entryId', (req, res) => {
-  db.prepare(`DELETE FROM report_entries WHERE id = ? AND report_id = ?`).run(req.params.entryId, req.params.id);
-  res.json({ ok: true });
+// ── DELETE /api/reports/:id/entries/:entryId ──────────────────────────────────
+router.delete('/:id/entries/:entryId', async (req, res) => {
+  try {
+    await db.query(
+      `DELETE FROM report_entries WHERE id = $1 AND report_id = $2`,
+      [req.params.entryId, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── POST /api/reports/:id/office  ────────────────────────────────────────────
-router.post('/:id/office', (req, res) => {
-  const { person_name, amount } = req.body;
-  if (!person_name) return res.status(400).json({ error: 'person_name requerido' });
-  const r = db.prepare(
-    `INSERT INTO office_payments (report_id, person_name, amount) VALUES (?, ?, ?)`
-  ).run(req.params.id, person_name, amount || 0);
-  res.status(201).json({ id: r.lastInsertRowid });
+// ── POST /api/reports/:id/office ──────────────────────────────────────────────
+router.post('/:id/office', async (req, res) => {
+  try {
+    const { person_name, amount } = req.body;
+    if (!person_name) return res.status(400).json({ error: 'person_name requerido' });
+    const { rows } = await db.query(
+      `INSERT INTO office_payments (report_id, person_name, amount) VALUES ($1, $2, $3) RETURNING id`,
+      [req.params.id, person_name, amount || 0]
+    );
+    res.status(201).json({ id: rows[0].id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUT /api/reports/:id/office/:payId ───────────────────────────────────────
+router.put('/:id/office/:payId', async (req, res) => {
+  try {
+    const { person_name, amount } = req.body;
+    await db.query(`
+      UPDATE office_payments
+         SET person_name = COALESCE($1, person_name),
+             amount      = COALESCE($2, amount)
+       WHERE id = $3 AND report_id = $4
+    `, [person_name ?? null, amount ?? null, req.params.payId, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── DELETE /api/reports/:id/office/:payId ────────────────────────────────────
+router.delete('/:id/office/:payId', async (req, res) => {
+  try {
+    await db.query(
+      `DELETE FROM office_payments WHERE id = $1 AND report_id = $2`,
+      [req.params.payId, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── PUT /api/reports/:id/office/:payId  ──────────────────────────────────────
@@ -217,10 +268,11 @@ router.delete('/:id/office/:payId', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── GET /api/reports/:id/export  — xlsx  ─────────────────────────────────────
+// ── GET /api/reports/:id/export — xlsx ──────────────────────────────────────
 router.get('/:id/export', async (req, res) => {
-  const detail = getReportDetail(req.params.id);
-  if (!detail) return res.status(404).json({ error: 'Semana no encontrada' });
+  try {
+    const detail = await getReportDetail(req.params.id);
+    if (!detail) return res.status(404).json({ error: 'Semana no encontrada' });
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Constructor Admin';
@@ -333,6 +385,7 @@ router.get('/:id/export', async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="relacion-${detail.report.week_date}.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

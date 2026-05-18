@@ -1,10 +1,4 @@
 'use strict';
-// Suppress the node:sqlite experimental warning in production
-process.on('warning', w => {
-  if (w.name === 'ExperimentalWarning' && w.message.includes('SQLite')) return;
-  console.warn(w.name, w.message);
-});
-
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

@@ -1,3 +1,7 @@
+databases:
+  - name: demarq-db
+    plan: free
+
 services:
   - type: web
     name: demarq
@@ -7,11 +11,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DB_PATH
-        value: /var/data/constructor.db
       - key: NODE_VERSION
         value: 22.15.0
-    disk:
-      name: sqlite-data
-      mountPath: /var/data
-      sizeGB: 1
+      - key: DATABASE_URL
+        fromDatabase:
+          name: demarq-db
+          property: connectionString
