@@ -14,7 +14,10 @@ require('./db'); // initialise schema on startup
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+const corsOptions = process.env.NODE_ENV === 'production'
+  ? { origin: 'https://demarq.onrender.com' }
+  : {};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // ── API routes ──────────────────────────────────────────────

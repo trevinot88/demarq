@@ -5,13 +5,13 @@ export default {
     extend: {
       colors: {
         navy: {
-          DEFAULT: '#1a1a2e',
-          light:   '#16213e',
-          dark:    '#0f0f1a',
+          DEFAULT: '#1d4ed8',
+          light:   '#e2e8f0',
+          dark:    '#f0f4f8',
         },
         accent: {
-          DEFAULT: '#e94560',
-          dark:    '#c23050',
+          DEFAULT: '#f97316',
+          dark:    '#ea580c',
         },
       },
       fontFamily: {

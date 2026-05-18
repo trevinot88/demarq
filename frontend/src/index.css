@@ -4,38 +4,38 @@
 
 @layer base {
   body {
-    @apply bg-navy-dark text-white font-sans;
+    @apply bg-navy-dark text-gray-800 font-sans;
     -webkit-font-smoothing: antialiased;
   }
 
   * {
-    @apply border-white/10;
+    @apply border-gray-200;
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { @apply bg-navy; }
-  ::-webkit-scrollbar-thumb { @apply bg-white/20 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-white/40; }
+  ::-webkit-scrollbar-track { @apply bg-gray-100; }
+  ::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-gray-400; }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-navy/60 backdrop-blur-sm border border-white/10 rounded-xl;
+    @apply bg-white border border-gray-200 rounded-xl shadow-sm;
   }
 
   .btn-primary {
     @apply bg-accent hover:bg-accent-dark text-white font-semibold px-4 py-2 rounded-lg
-           transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent/50
+           transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent/40
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-2 rounded-lg
-           transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-white/20;
+    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300
+           transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-gray-200;
   }
 
   .btn-danger {
-    @apply bg-red-600/80 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg
            transition-colors duration-150;
   }
 
@@ -44,33 +44,33 @@
   }
 
   .input-field {
-    @apply bg-navy-dark border border-white/20 rounded-lg px-3 py-2 text-white
-           focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50
-           placeholder-white/30 w-full;
+    @apply bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900
+           focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60
+           placeholder-gray-400 w-full;
   }
 
   .table-row {
-    @apply border-b border-white/5 hover:bg-white/5 transition-colors;
+    @apply border-b border-gray-100 hover:bg-orange-50/40 transition-colors;
   }
 
   .table-row:nth-child(even) {
-    @apply bg-white/[0.02];
+    @apply bg-gray-50/50;
   }
 
   .tag {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 
-  .saldo-pos  { @apply text-green-400; }
-  .saldo-cero { @apply text-gray-400; }
-  .saldo-neg  { @apply text-red-400; }
+  .saldo-pos  { @apply text-green-600; }
+  .saldo-cero { @apply text-gray-500; }
+  .saldo-neg  { @apply text-red-600; }
 
   .nav-link {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium
-           text-gray-400 hover:text-white hover:bg-white/10 transition-colors;
+           text-blue-200 hover:text-white hover:bg-white/15 transition-colors;
   }
 
   .nav-link.active {
-    @apply text-white bg-accent/20 border-l-2 border-accent;
+    @apply text-white bg-white/20 border-l-2 border-white;
   }
 }

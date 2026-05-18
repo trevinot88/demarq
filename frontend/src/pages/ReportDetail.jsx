@@ -27,14 +27,14 @@ function EditCell({ value, onSave, className = '', isCurrency = false, readOnly 
           if (e.key === 'Enter') { setEditing(false); onSave(draft); }
           if (e.key === 'Escape') { setEditing(false); setDraft(value); }
         }}
-        className="w-full bg-navy border border-accent/50 rounded px-2 py-1 text-white text-sm font-mono focus:outline-none"
+        className="w-full bg-white border border-accent/60 rounded px-2 py-1 text-gray-900 text-sm font-mono focus:outline-none"
       />
     );
   }
 
   return (
     <span
-      className={`cursor-pointer hover:bg-white/10 px-1 py-0.5 rounded transition-colors ${className}`}
+      className={`cursor-pointer hover:bg-orange-50 px-1 py-0.5 rounded transition-colors ${className}`}
       onClick={() => { setEditing(true); setDraft(value); }}
       title="Clic para editar"
     >
@@ -60,8 +60,8 @@ function EntryRow({ entry, reportId, onUpdated, onDelete }) {
 
   return (
     <tr className="table-row text-sm">
-      <td className="px-4 py-2.5 text-gray-300">{entry.contractor_name}</td>
-      <td className="px-4 py-2.5 text-right font-mono text-gray-300">{mxn(vp)}</td>
+      <td className="px-4 py-2.5 text-gray-600">{entry.contractor_name}</td>
+      <td className="px-4 py-2.5 text-right font-mono text-gray-600">{mxn(vp)}</td>
       <td className="px-4 py-2.5 text-right font-mono">
         <EditCell value={entry.ent_a_cta} isCurrency onSave={v => save('ent_a_cta', v)} />
       </td>
@@ -75,7 +75,7 @@ function EntryRow({ entry, reportId, onUpdated, onDelete }) {
         {mxn(saldo_final)}
       </td>
       <td className="px-4 py-2.5 max-w-[160px]">
-        <EditCell value={entry.notes || ''} onSave={v => save('notes', v)} className="text-gray-400 text-xs" />
+        <EditCell value={entry.notes || ''} onSave={v => save('notes', v)} className="text-gray-500 text-xs" />
       </td>
       <td className="px-4 py-2.5">
         <button onClick={() => onDelete(entry.id)} className="text-gray-600 hover:text-red-400 transition-colors">
@@ -100,7 +100,7 @@ function OfficeRow({ payment, reportId, onUpdated, onDelete }) {
   return (
     <tr className="table-row text-sm">
       <td className="px-4 py-2.5">
-        <EditCell value={payment.person_name} onSave={v => save('person_name', v)} className="text-white font-medium" />
+        <EditCell value={payment.person_name} onSave={v => save('person_name', v)} className="text-gray-900 font-medium" />
       </td>
       <td className="px-4 py-2.5 text-right font-mono">
         <EditCell value={payment.amount} isCurrency onSave={v => save('amount', v)} className="text-green-400 font-semibold" />
@@ -216,12 +216,12 @@ export default function ReportDetail() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Link to="/reports" className="text-gray-400 hover:text-white transition-colors">
+          <Link to="/reports" className="text-gray-400 hover:text-gray-700 transition-colors">
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white capitalize">{formatWeekDate(report.week_date)}</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Haz clic en cualquier valor para editarlo en línea</p>
+            <h1 className="text-2xl font-bold text-gray-900 capitalize">{formatWeekDate(report.week_date)}</h1>
+            <p className="text-xs text-gray-500 mt-0.5">Haz clic en cualquier valor para editarlo en línea</p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -243,12 +243,12 @@ export default function ReportDetail() {
         <div key={proj.project_id} className="glass-card overflow-hidden">
           <button
             onClick={() => toggleProject(proj.project_id)}
-            className="w-full flex items-center justify-between px-5 py-3 bg-navy-light border-b border-white/10 hover:bg-white/5 transition-colors"
+            className="w-full flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200 hover:bg-orange-50/40 transition-colors"
           >
-            <span className="font-bold text-white tracking-wide">{proj.project_name}</span>
+            <span className="font-bold text-gray-900 tracking-wide">{proj.project_name}</span>
             <div className="flex items-center gap-4 text-sm">
-              <span className="text-gray-400">
-                Rep. A Cta.: <span className="text-green-400 font-mono">{mxn(proj.entries.reduce((s,e) => s + e.rep_a_cta, 0))}</span>
+              <span className="text-gray-500">
+                Rep. A Cta.: <span className="text-green-600 font-mono">{mxn(proj.entries.reduce((s,e) => s + e.rep_a_cta, 0))}</span>
               </span>
               {collapsed[proj.project_id] ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronUp size={16} className="text-gray-400" />}
             </div>
@@ -258,7 +258,7 @@ export default function ReportDetail() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-white/10 bg-navy/50">
+                  <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-blue-50/30">
                     <th className="px-4 py-2.5 text-left">Contratista</th>
                     <th className="px-4 py-2.5 text-right">V.P.</th>
                     <th className="px-4 py-2.5 text-right">Ent. A Cta.</th>
@@ -288,11 +288,11 @@ export default function ReportDetail() {
 
       {/* Oficina */}
       <div className="glass-card overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 bg-navy-light border-b border-white/10">
-          <span className="font-bold text-white">OFICINA</span>
+        <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
+          <span className="font-bold text-gray-900">OFICINA</span>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400">
-              Total: <span className="text-green-400 font-mono">{mxn(total_office)}</span>
+            <span className="text-sm text-gray-500">
+              Total: <span className="text-green-600 font-mono">{mxn(total_office)}</span>
             </span>
             <button onClick={() => setShowAddOffice(true)} className="btn-primary btn-sm flex items-center gap-1">
               <Plus size={14} /> Agregar
@@ -302,7 +302,7 @@ export default function ReportDetail() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-white/10 bg-navy/50">
+              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-blue-50/30">
                 <th className="px-4 py-2.5 text-left">Persona</th>
                 <th className="px-4 py-2.5 text-right">Monto</th>
                 <th className="px-4 py-2.5" />
@@ -327,15 +327,15 @@ export default function ReportDetail() {
       <div className="glass-card p-5 border-accent/20">
         <div className="flex flex-wrap gap-6 justify-between items-center">
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Total Proyectos</p>
-            <p className="text-xl font-bold text-white font-mono">{mxn(total_projects)}</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Proyectos</p>
+            <p className="text-xl font-bold text-gray-900 font-mono">{mxn(total_projects)}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Total Oficina</p>
-            <p className="text-xl font-bold text-white font-mono">{mxn(total_office)}</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Oficina</p>
+            <p className="text-xl font-bold text-gray-900 font-mono">{mxn(total_office)}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">TOTAL GENERAL</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">TOTAL GENERAL</p>
             <p className="text-3xl font-bold text-accent font-mono">{mxn(total_general)}</p>
           </div>
         </div>
@@ -343,13 +343,13 @@ export default function ReportDetail() {
 
       {/* Resumen por contratista */}
       <div className="glass-card overflow-hidden">
-        <div className="px-5 py-3 bg-navy-light border-b border-white/10">
-          <span className="font-bold text-white">RESUMEN — Contratistas</span>
+        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+          <span className="font-bold text-gray-900">RESUMEN — Contratistas</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-white/10">
+              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
                 <th className="px-5 py-3 text-left">#</th>
                 <th className="px-5 py-3 text-left">Contratista</th>
                 <th className="px-5 py-3 text-right">Rep. A Cta.</th>
@@ -359,14 +359,14 @@ export default function ReportDetail() {
               {summary.map((s, i) => (
                 <tr key={s.contractor_id} className="table-row text-sm">
                   <td className="px-5 py-2.5 text-gray-500">{i + 1}</td>
-                  <td className="px-5 py-2.5 font-medium text-white">{s.contractor_name}</td>
+                  <td className="px-5 py-2.5 font-medium text-gray-900">{s.contractor_name}</td>
                   <td className="px-5 py-2.5 text-right font-mono text-green-400 font-semibold">{mxn(s.total_rep_a_cta)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-white/20">
-                <td colSpan={2} className="px-5 py-3 font-bold text-white">TOTAL GENERAL</td>
+              <tr className="border-t border-gray-300">
+                <td colSpan={2} className="px-5 py-3 font-bold text-gray-900">TOTAL GENERAL</td>
                 <td className="px-5 py-3 text-right font-mono font-bold text-accent text-lg">{mxn(total_general)}</td>
               </tr>
             </tfoot>
@@ -379,7 +379,7 @@ export default function ReportDetail() {
         <Modal title="Agregar Contratista a esta Semana" onClose={() => setShowAddEntry(false)}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Proyecto</label>
+              <label className="block text-sm text-gray-500 mb-1">Proyecto</label>
               <select className="input-field"
                 value={newEntry.project_id}
                 onChange={e => setNewEntry(n => ({ ...n, project_id: e.target.value }))}
@@ -391,7 +391,7 @@ export default function ReportDetail() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Contratista</label>
+              <label className="block text-sm text-gray-500 mb-1">Contratista</label>
               <select className="input-field"
                 value={newEntry.contractor_id}
                 onChange={e => setNewEntry(n => ({ ...n, contractor_id: e.target.value }))}
@@ -404,18 +404,18 @@ export default function ReportDetail() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">V.P.</label>
+                <label className="block text-sm text-gray-500 mb-1">V.P.</label>
                 <input type="number" className="input-field" value={newEntry.vp}
                   onChange={e => setNewEntry(n => ({ ...n, vp: Number(e.target.value) }))} />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Ent. A Cta.</label>
+                <label className="block text-sm text-gray-500 mb-1">Ent. A Cta.</label>
                 <input type="number" className="input-field" value={newEntry.ent_a_cta}
                   onChange={e => setNewEntry(n => ({ ...n, ent_a_cta: Number(e.target.value) }))} />
               </div>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Notas</label>
+              <label className="block text-sm text-gray-500 mb-1">Notas</label>
               <input type="text" className="input-field" value={newEntry.notes}
                 onChange={e => setNewEntry(n => ({ ...n, notes: e.target.value }))} />
             </div>
@@ -432,12 +432,12 @@ export default function ReportDetail() {
         <Modal title="Agregar Pago Oficina" onClose={() => setShowAddOffice(false)} size="sm">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Persona</label>
+              <label className="block text-sm text-gray-500 mb-1">Persona</label>
               <input type="text" className="input-field" value={newOffice.person_name}
                 onChange={e => setNewOffice(n => ({ ...n, person_name: e.target.value.toUpperCase() }))} />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Monto</label>
+              <label className="block text-sm text-gray-500 mb-1">Monto</label>
               <input type="number" className="input-field" value={newOffice.amount}
                 onChange={e => setNewOffice(n => ({ ...n, amount: Number(e.target.value) }))} />
             </div>

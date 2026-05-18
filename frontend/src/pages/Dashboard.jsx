@@ -28,16 +28,16 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         {current_week && (
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-gray-500 text-sm mt-1">
             Semana actual: {formatWeekDate(current_week.week_date)}
           </p>
         )}
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           title="Rep. A Cta. (semana actual)"
           value={mxn(current_week_total)}
@@ -73,10 +73,10 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2">
             {negative_alerts.map((a, i) => (
-              <div key={i} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+              <div key={i} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
                 <div>
-                  <span className="text-white font-medium">{a.contractor_name}</span>
-                  <span className="text-gray-400 text-sm ml-2">— {a.project_name}</span>
+                  <span className="text-gray-900 font-medium">{a.contractor_name}</span>
+                  <span className="text-gray-500 text-sm ml-2">— {a.project_name}</span>
                 </div>
                 <span className="saldo-neg font-mono font-bold">{mxn(a.saldo_final)}</span>
               </div>
@@ -88,24 +88,24 @@ export default function Dashboard() {
       {/* Resumen semana actual */}
       {current_week_summary.length > 0 && (
         <div className="glass-card">
-          <div className="px-5 py-4 border-b border-white/10">
-            <h2 className="font-semibold text-white">Resumen — Semana Actual</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Rep. A Cta. por contratista (todos sus proyectos)</p>
+          <div className="px-5 py-4 border-b border-gray-200">
+            <h2 className="font-semibold text-gray-900">Resumen — Semana Actual</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Rep. A Cta. por contratista (todos sus proyectos)</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left text-xs text-gray-400 uppercase tracking-wider border-b border-white/10">
+                <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
                   <th className="px-5 py-3">#</th>
                   <th className="px-5 py-3">Contratista</th>
                   <th className="px-5 py-3 text-right">Rep. A Cta.</th>
                 </tr>
               </thead>
               <tbody>
-                {current_week_summary.map((row, i) => (
+                {current_week_summary.filter(row => row.total > 0).map((row, i) => (
                   <tr key={row.contractor_name} className="table-row">
-                    <td className="px-5 py-3 text-gray-500 text-sm">{i + 1}</td>
-                    <td className="px-5 py-3 font-medium text-white">{row.contractor_name}</td>
+                    <td className="px-5 py-3 text-gray-400 text-sm">{i + 1}</td>
+                    <td className="px-5 py-3 font-medium text-gray-900">{row.contractor_name}</td>
                     <td className="px-5 py-3 text-right font-mono text-green-400 font-semibold">
                       {mxn(row.total)}
                     </td>
@@ -113,8 +113,8 @@ export default function Dashboard() {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t border-white/20">
-                  <td colSpan={2} className="px-5 py-3 font-bold text-white">TOTAL</td>
+                <tr className="border-t border-gray-200">
+                  <td colSpan={2} className="px-5 py-3 font-bold text-gray-900">TOTAL</td>
                   <td className="px-5 py-3 text-right font-mono font-bold text-accent text-lg">
                     {mxn(current_week_total)}
                   </td>

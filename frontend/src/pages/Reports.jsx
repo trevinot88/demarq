@@ -39,7 +39,7 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Relación Semanal</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Relación Semanal</h1>
         <button className="btn-primary flex items-center gap-2" onClick={() => setShowModal(true)}>
           <Plus size={16} /> Nueva Semana
         </button>
@@ -50,8 +50,8 @@ export default function Reports() {
       ) : (
         <div className="space-y-2">
           {weeks.length === 0 && (
-            <div className="glass-card p-10 text-center text-gray-400">
-              <Calendar size={40} className="mx-auto mb-3 opacity-40" />
+            <div className="glass-card p-10 text-center text-gray-500">
+              <Calendar size={40} className="mx-auto mb-3 opacity-30" />
               <p>No hay semanas registradas</p>
               <button className="btn-primary btn-sm mt-4" onClick={() => setShowModal(true)}>Crear primera semana</button>
             </div>
@@ -67,13 +67,13 @@ export default function Reports() {
                   <Calendar size={18} className="text-accent" />
                 </div>
                 <div>
-                  <p className="font-semibold text-white capitalize">{formatWeekDate(w.week_date)}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="font-semibold text-gray-900 capitalize">{formatWeekDate(w.week_date)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
                     Total Rep. A Cta.: <span className="text-green-400 font-mono">{mxn(w.total_general)}</span>
                   </p>
                 </div>
               </div>
-              <ChevronRight size={18} className="text-gray-500 group-hover:text-accent transition-colors" />
+              <ChevronRight size={18} className="text-gray-400 group-hover:text-accent transition-colors" />
             </Link>
           ))}
         </div>
@@ -83,14 +83,14 @@ export default function Reports() {
         <Modal title="Nueva Semana" onClose={() => setShowModal(false)} size="sm">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Fecha de la semana</label>
+              <label className="block text-sm text-gray-500 mb-1">Fecha de la semana</label>
               <input
                 type="date"
                 value={newDate}
                 onChange={e => setNewDate(e.target.value)}
                 className="input-field"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Por defecto: viernes más próximo. Se auto-populará con todos los proyectos activos y sus contratistas.
               </p>
             </div>

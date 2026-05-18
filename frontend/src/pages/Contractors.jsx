@@ -33,7 +33,7 @@ function ContractorModal({ contractor, onClose, onSaved }) {
     <Modal title={editing ? 'Editar Contratista' : 'Nuevo Contratista'} onClose={onClose} size="sm">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Nombre *</label>
+          <label className="block text-sm text-gray-500 mb-1">Nombre *</label>
           <input
             className="input-field"
             value={name}
@@ -82,7 +82,7 @@ export default function Contractors() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Contratistas</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Contratistas</h1>
         <button className="btn-primary flex items-center gap-2" onClick={() => setModal({})}>
           <Plus size={16} /> Nuevo Contratista
         </button>
@@ -101,7 +101,7 @@ export default function Contractors() {
         <div className="glass-card overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-white/10 bg-navy-light">
+              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
                 <th className="px-5 py-3 text-left">Contratista</th>
                 <th className="px-5 py-3 text-right">Proyectos</th>
                 <th className="px-5 py-3 text-right">VP Total</th>
@@ -120,20 +120,20 @@ export default function Contractors() {
                       <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
                         <span className="text-accent text-xs font-bold">{c.name[0]}</span>
                       </div>
-                      <span className="font-medium text-white">{c.name}</span>
+                      <span className="font-medium text-gray-900">{c.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-right text-gray-400 text-sm">{c.project_count}</td>
-                  <td className="px-5 py-3 text-right font-mono text-gray-300 text-sm">{mxn(c.total_vp)}</td>
+                  <td className="px-5 py-3 text-right text-gray-500 text-sm">{c.project_count}</td>
+                  <td className="px-5 py-3 text-right font-mono text-gray-700 text-sm">{mxn(c.total_vp)}</td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-3">
-                      <button onClick={() => setModal(c)} className="text-gray-500 hover:text-accent transition-colors">
+                      <button onClick={() => setModal(c)} className="text-gray-400 hover:text-gray-700 transition-colors">
                         <Pencil size={15} />
                       </button>
-                      <button onClick={() => handleDelete(c)} className="text-gray-500 hover:text-red-400 transition-colors">
+                      <button onClick={() => handleDelete(c)} className="text-gray-400 hover:text-red-500 transition-colors">
                         <Trash2 size={15} />
                       </button>
-                      <Link to={`/contractors/${c.id}`} className="text-gray-500 hover:text-accent transition-colors">
+                      <Link to={`/contractors/${c.id}`} className="text-gray-400 hover:text-accent transition-colors">
                         <ChevronRight size={18} />
                       </Link>
                     </div>

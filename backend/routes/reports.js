@@ -51,7 +51,9 @@ function getReportDetail(id) {
     }
     summaryMap.get(e.contractor_id).total_rep_a_cta += e.rep_a_cta;
   }
-  const summary = [...summaryMap.values()].sort((a, b) => b.total_rep_a_cta - a.total_rep_a_cta);
+  const summary = [...summaryMap.values()]
+    .filter(s => s.total_rep_a_cta > 0)
+    .sort((a, b) => b.total_rep_a_cta - a.total_rep_a_cta);
 
   const total_projects = enriched.reduce((s, e) => s + e.rep_a_cta, 0);
   const total_office   = officePayments.reduce((s, o) => s + o.amount, 0);

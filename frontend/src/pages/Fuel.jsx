@@ -12,9 +12,9 @@ const TYPE_LABEL = {
   RETIRO:      'Retiro',
 };
 const TYPE_CLASS = {
-  FACTURA_GAS: 'bg-blue-500/20 text-blue-400',
-  APORTACION:  'bg-green-500/20 text-green-400',
-  RETIRO:      'bg-red-500/20 text-red-400',
+  FACTURA_GAS: 'bg-blue-100 text-blue-700',
+  APORTACION:  'bg-green-100 text-green-700',
+  RETIRO:      'bg-red-100 text-red-700',
 };
 
 const EMPTY_FORM = { date: new Date().toISOString().split('T')[0], type: 'FACTURA_GAS', amount: '', description: '' };
@@ -84,7 +84,7 @@ export default function FuelPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Gasolinas / Caja</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Gasolinas / Caja</h1>
         <button className="btn-primary flex items-center gap-2" onClick={openCreate}>
           <Plus size={16} /> Nueva Transacción
         </button>
@@ -92,7 +92,7 @@ export default function FuelPage() {
 
       {/* KPIs */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard title="Total Gas (Facturas)" value={mxn(summary.total_gas)} icon={Fuel} color="blue" />
           <StatCard title="Total Aportaciones" value={mxn(summary.total_aportacion)} icon={TrendingUp} color="green" />
           <StatCard
@@ -115,12 +115,12 @@ export default function FuelPage() {
       {/* Filtros */}
       <div className="glass-card p-4 flex flex-wrap gap-4 items-end">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Desde</label>
+          <label className="block text-xs text-gray-500 mb-1">Desde</label>
           <input type="date" className="input-field w-44" value={dateFrom}
             onChange={e => setDateFrom(e.target.value)} />
         </div>
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Hasta</label>
+          <label className="block text-xs text-gray-500 mb-1">Hasta</label>
           <input type="date" className="input-field w-44" value={dateTo}
             onChange={e => setDateTo(e.target.value)} />
         </div>
@@ -135,7 +135,7 @@ export default function FuelPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-white/10 bg-navy-light">
+                <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
                   <th className="px-5 py-3 text-left">Fecha</th>
                   <th className="px-5 py-3 text-left">Descripción</th>
                   <th className="px-5 py-3 text-left">Tipo</th>
@@ -148,21 +148,21 @@ export default function FuelPage() {
                   <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-500">Sin transacciones</td></tr>
                 ) : transactions.map(t => (
                   <tr key={t.id} className="table-row text-sm">
-                    <td className="px-5 py-3 text-gray-300 font-mono">{fmtDate(t.date)}</td>
-                    <td className="px-5 py-3 text-white">{t.description || '—'}</td>
+                    <td className="px-5 py-3 text-gray-700 font-mono">{fmtDate(t.date)}</td>
+                    <td className="px-5 py-3 text-gray-900">{t.description || '—'}</td>
                     <td className="px-5 py-3">
                       <span className={`tag ${TYPE_CLASS[t.type]}`}>{TYPE_LABEL[t.type]}</span>
                     </td>
                     <td className={`px-5 py-3 text-right font-mono font-semibold
-                      ${t.type === 'RETIRO' ? 'text-red-400' : 'text-green-400'}`}>
+                      ${t.type === 'RETIRO' ? 'text-red-600' : 'text-green-600'}`}>
                       {t.type === 'RETIRO' ? '-' : ''}{mxn(t.amount)}
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-3">
-                        <button onClick={() => openEdit(t)} className="text-gray-500 hover:text-accent transition-colors">
+                        <button onClick={() => openEdit(t)} className="text-gray-400 hover:text-accent transition-colors">
                           <Pencil size={14} />
                         </button>
-                        <button onClick={() => handleDelete(t)} className="text-gray-500 hover:text-red-400 transition-colors">
+                        <button onClick={() => handleDelete(t)} className="text-gray-400 hover:text-red-500 transition-colors">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -184,12 +184,12 @@ export default function FuelPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Fecha *</label>
+              <label className="block text-sm text-gray-500 mb-1">Fecha *</label>
               <input type="date" className="input-field" value={form.date}
                 onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Tipo *</label>
+              <label className="block text-sm text-gray-500 mb-1">Tipo *</label>
               <select className="input-field" value={form.type}
                 onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                 <option value="FACTURA_GAS">Factura Gas</option>
@@ -198,12 +198,12 @@ export default function FuelPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Monto *</label>
+              <label className="block text-sm text-gray-500 mb-1">Monto *</label>
               <input type="number" min="0" step="0.01" className="input-field" value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Descripción</label>
+              <label className="block text-sm text-gray-500 mb-1">Descripción</label>
               <input type="text" className="input-field" value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             </div>

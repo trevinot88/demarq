@@ -44,6 +44,7 @@ router.get('/', (req, res) => {
       summaryMap[e.contractor_id].total += e.rep_a_cta;
     }
     currentWeekSummary = Object.values(summaryMap)
+      .filter(s => s.total > 0)
       .sort((a, b) => b.total - a.total);
 
     // Alertas de saldo_final negativo
