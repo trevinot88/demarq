@@ -5,8 +5,32 @@ if (!process.env.DATABASE_URL) {
   console.warn('⚠️  DATABASE_URL not set — set it in .env for local development');
 }
 
+function normalizeDatabaseUrl(rawUrl) {
+  if (!rawUrl) return rawUrl;
+
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname || '';
+
+    // Render Postgres hostnames should include a domain suffix.
+    // If only the instance id is present (e.g. dpg-xxxx), recover using region suffix.
+    if (host.startsWith('dpg-') && !host.includes('.')) {
+      const region = process.env.RENDER_REGION || 'oregon';
+      parsed.hostname = `${host}.${region}-postgres.render.com`;
+      console.warn(`⚠️  DATABASE_URL host normalized to ${parsed.hostname}`);
+      return parsed.toString();
+    }
+
+    return rawUrl;
+  } catch (_err) {
+    return rawUrl;
+  }
+}
+
+const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL);
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
