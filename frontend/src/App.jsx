@@ -8,8 +8,24 @@ import ProjectDetail from './pages/ProjectDetail.jsx';
 import Contractors from './pages/Contractors.jsx';
 import ContractorDetail from './pages/ContractorDetail.jsx';
 import Fuel        from './pages/Fuel.jsx';
+import Login       from './pages/Login.jsx';
+import { useAuth } from './context/AuthContext.jsx';
+import { HardHat } from 'lucide-react';
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-sand-lightest">
+      <HardHat className="text-olive animate-pulse" size={48} />
+    </div>
+  );
+}
 
 export default function App() {
+  const { authenticated } = useAuth();
+
+  if (authenticated === null) return <LoadingScreen />;
+  if (!authenticated)         return <Login />;
+
   return (
     <div className="flex min-h-screen bg-sand-lightest">
       <Sidebar />
@@ -30,3 +46,4 @@ export default function App() {
     </div>
   );
 }
+

@@ -17,3 +17,9 @@ services:
         fromDatabase:
           name: demarq-db
           property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_USER
+        value: demarq
+      - key: ADMIN_PASS
+        value: "2026"

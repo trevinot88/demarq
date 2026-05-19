@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, FolderKanban,
-  Users, Fuel, HardHat,
+  Users, Fuel, HardHat, LogOut,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const links = [
   { to: '/',            label: 'Dashboard',          icon: LayoutDashboard },
@@ -13,6 +14,8 @@ const links = [
 ];
 
 export default function Sidebar() {
+  const { logout } = useAuth();
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-brown shadow-xl flex flex-col z-40">
       {/* Logo */}
@@ -44,9 +47,17 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-white/10">
+      <div className="px-4 py-4 border-t border-white/10 space-y-3">
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-olive-light hover:text-sand-lightest hover:bg-white/10 transition-colors"
+        >
+          <LogOut size={16} />
+          Cerrar sesión
+        </button>
         <p className="text-xs text-olive/60 text-center">v1.0 · DEMARQ Admin</p>
       </div>
     </aside>
   );
 }
+

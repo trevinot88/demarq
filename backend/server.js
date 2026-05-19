@@ -1,28 +1,50 @@
 'use strict';
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const path = require('path');
+const cors    = require('cors');
+const session = require('express-session');
+const path    = require('path');
+const crypto  = require('crypto');
 
 require('./db'); // initialise schema on startup
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 3001;
 
 const corsOptions = process.env.NODE_ENV === 'production'
-  ? { origin: 'https://demarq.onrender.com' }
-  : {};
+  ? { origin: 'https://demarq.onrender.com', credentials: true }
+  : { credentials: true };
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// ── API routes ──────────────────────────────────────────────
-app.use('/api/dashboard',   require('./routes/dashboard'));
-app.use('/api/projects',    require('./routes/projects'));
-app.use('/api/contractors', require('./routes/contractors'));
-app.use('/api/reports',     require('./routes/reports'));
-app.use('/api/fuel',        require('./routes/fuel'));
+// ── Sessions ──────────────────────────────────────────────────────────────────
+app.use(session({
+  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 8 * 60 * 60 * 1000, // 8 horas
+  },
+}));
 
-// ── Frontend (production) ───────────────────────────────────
+// ── Auth middleware ────────────────────────────────────────────────────────────
+function requireAuth(req, res, next) {
+  if (req.session.authenticated) return next();
+  res.status(401).json({ error: 'No autenticado' });
+}
+
+// ── API routes ────────────────────────────────────────────────────────────────
+app.use('/api/auth',        require('./routes/auth'));
+app.use('/api/dashboard',   requireAuth, require('./routes/dashboard'));
+app.use('/api/projects',    requireAuth, require('./routes/projects'));
+app.use('/api/contractors', requireAuth, require('./routes/contractors'));
+app.use('/api/reports',     requireAuth, require('./routes/reports'));
+app.use('/api/fuel',        requireAuth, require('./routes/fuel'));
+
+// ── Frontend (production) ─────────────────────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {
   const dist = path.join(__dirname, '..', 'frontend', 'dist');
   app.use(express.static(dist));
