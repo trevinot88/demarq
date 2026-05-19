@@ -28,7 +28,10 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
   }
   req.session.authenticated = true;
-  res.json({ ok: true });
+  req.session.save(err => {
+    if (err) return res.status(500).json({ error: 'Error al guardar sesión' });
+    res.json({ ok: true });
+  });
 });
 
 // POST /api/auth/logout
