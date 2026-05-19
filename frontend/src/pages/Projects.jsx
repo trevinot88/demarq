@@ -111,7 +111,11 @@ export default function Projects() {
                 </div>
                 <div className="divide-y divide-gray-100">
                   {list.map(p => (
-                    <div key={p.id} className="flex items-center px-5 py-4 hover:bg-sand-light/40 transition-colors group">
+                    <Link
+                      key={p.id}
+                      to={`/projects/${p.id}`}
+                      className="flex items-center px-5 py-4 hover:bg-sand-light/40 transition-colors group"
+                    >
                       <div className="w-9 h-9 rounded-xl bg-olive/15 flex items-center justify-center mr-4 shrink-0">
                         <FolderKanban size={17} className="text-olive-dark" />
                       </div>
@@ -123,17 +127,21 @@ export default function Projects() {
                       </div>
                       <div className="flex items-center gap-3 ml-4">
                         <span className={`tag ${STATUS_CLASS[p.status]}`}>{STATUS_LABEL[p.status]}</span>
-                        <button onClick={() => setModal(p)} className="text-brown/30 hover:text-brown transition-colors">
+                        <button
+                          onClick={(e) => { e.preventDefault(); setModal(p); }}
+                          className="text-brown/30 hover:text-brown transition-colors"
+                        >
                           <Pencil size={15} />
                         </button>
-                        <button onClick={() => handleDelete(p)} className="text-brown/30 hover:text-red-500 transition-colors">
+                        <button
+                          onClick={(e) => { e.preventDefault(); handleDelete(p); }}
+                          className="text-brown/30 hover:text-red-500 transition-colors"
+                        >
                           <Trash2 size={15} />
                         </button>
-                        <Link to={`/projects/${p.id}`} className="text-brown/30 hover:text-olive-dark transition-colors">
-                          <ChevronRight size={18} />
-                        </Link>
+                        <ChevronRight size={18} className="text-brown/30 group-hover:text-olive-dark transition-colors" />
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>

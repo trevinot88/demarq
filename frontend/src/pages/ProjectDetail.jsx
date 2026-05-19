@@ -95,15 +95,25 @@ export default function ProjectDetail() {
               <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
                 <th className="px-5 py-3 text-left">Contratista</th>
                 <th className="px-5 py-3 text-right">V.P.</th>
+                <th className="px-5 py-3 text-right">Pagado</th>
+                <th className="px-5 py-3 text-right">Saldo</th>
                 <th className="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {contractors.map(c => (
-                <tr key={c.contractor_id} className="table-row text-sm">
-                  <td className="px-5 py-3 text-gray-900 font-medium">{c.contractor_name}</td>
-                  <td className="px-5 py-3 text-right font-mono text-gray-700">{mxn(c.valor_presupuesto)}</td>
-                  <td className="px-5 py-3 text-right">
+              {contractors.map(c => {
+                const saldo = c.valor_presupuesto - c.total_pagado;
+                return (
+                  <tr key={c.contractor_id} className="table-row text-sm">
+                    <td className="px-5 py-3 text-gray-900 font-medium">{c.contractor_name}</td>
+                    <td className="px-5 py-3 text-right font-mono text-gray-700">{mxn(c.valor_presupuesto)}</td>
+                    <td className="px-5 py-3 text-right font-mono text-gray-600">{mxn(c.total_pagado)}</td>
+                    <td className={`px-5 py-3 text-right font-mono font-semibold ${
+                      saldo < 0 ? 'text-red-600' : saldo === 0 ? 'text-gray-400' : 'text-green-600'
+                    }`}>
+                      {mxn(saldo)}
+                    </td>
+                    <td className="px-5 py-3 text-right">
                     <div className="flex justify-end gap-3">
                       <button
                         onClick={() => { setEditBudget(c); setBudgetVal(c.valor_presupuesto); }}
@@ -116,7 +126,8 @@ export default function ProjectDetail() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

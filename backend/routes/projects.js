@@ -37,7 +37,13 @@ router.get('/:id', async (req, res) => {
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
     const { rows: contractors } = await db.query(`
-      SELECT cpb.*, c.name AS contractor_name
+      SELECT cpb.*, c.name AS contractor_name,
+        COALESCE(
+          (SELECT SUM(re.ent_a_cta + re.rep_a_cta)
+           FROM report_entries re
+           WHERE re.contractor_id = cpb.contractor_id
+             AND re.project_id = cpb.project_id), 0
+        ) AS total_pagado
       FROM contractor_project_budgets cpb
       JOIN contractors c ON c.id = cpb.contractor_id
       WHERE cpb.project_id = $1
