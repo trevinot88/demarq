@@ -5,29 +5,57 @@ if (!process.env.DATABASE_URL) {
   console.warn('⚠️  DATABASE_URL not set — set it in .env for local development');
 }
 
+function normalizeRenderHost(host) {
+  if (!host) return host;
+  if (host.startsWith('dpg-') && !host.includes('.')) {
+    const region = process.env.RENDER_REGION || 'oregon';
+    return `${host}.${region}-postgres.render.com`;
+  }
+  return host;
+}
+
 function normalizeDatabaseUrl(rawUrl) {
-  if (!rawUrl) return rawUrl;
+  if (!rawUrl) return null;
 
   try {
     const parsed = new URL(rawUrl);
-    const host = parsed.hostname || '';
+    const originalHost = parsed.hostname || '';
+    const normalizedHost = normalizeRenderHost(originalHost);
 
-    // Render Postgres hostnames should include a domain suffix.
-    // If only the instance id is present (e.g. dpg-xxxx), recover using region suffix.
-    if (host.startsWith('dpg-') && !host.includes('.')) {
-      const region = process.env.RENDER_REGION || 'oregon';
-      parsed.hostname = `${host}.${region}-postgres.render.com`;
+    if (normalizedHost !== originalHost) {
+      parsed.hostname = normalizedHost;
       console.warn(`⚠️  DATABASE_URL host normalized to ${parsed.hostname}`);
-      return parsed.toString();
     }
 
-    return rawUrl;
+    return parsed.toString();
   } catch (_err) {
-    return rawUrl;
+    // Fallback for malformed URLs that still contain host+path segments.
+    const match = rawUrl.match(/@(dpg-[a-z0-9-]+)(?=[:/]|$)/i);
+    if (match) {
+      const normalizedHost = normalizeRenderHost(match[1]);
+      if (normalizedHost !== match[1]) {
+        const fixed = rawUrl.replace(match[1], normalizedHost);
+        console.warn(`⚠️  DATABASE_URL host normalized to ${normalizedHost}`);
+        return fixed;
+      }
+    }
+    return rawUrl || null;
   }
 }
 
-const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL);
+function connectionStringFromPgEnv() {
+  const host = normalizeRenderHost(process.env.PGHOST || '');
+  const port = process.env.PGPORT || '5432';
+  const database = process.env.PGDATABASE;
+  const user = process.env.PGUSER;
+  const password = process.env.PGPASSWORD;
+
+  if (!host || !database || !user || !password) return null;
+
+  return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+}
+
+const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL) || connectionStringFromPgEnv();
 
 const pool = new Pool({
   connectionString,
@@ -117,8 +145,8 @@ async function initSchema() {
 }
 
 // ── Schema initialization with retry ────────────────────────────────────────
-if (!process.env.DATABASE_URL) {
-  console.warn('⚠️  DATABASE_URL not set — DB disabled (set it in .env)');
+if (!connectionString) {
+  console.warn('⚠️  No valid DB connection settings found — DB disabled');
 } else {
   const RETRY_ATTEMPTS = 15;
   const RETRY_DELAY_MS = 4000;
