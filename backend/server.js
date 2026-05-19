@@ -11,6 +11,9 @@ require('./db'); // initialise schema on startup
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust Render's reverse proxy so secure cookies work over HTTPS
+app.set('trust proxy', 1);
+
 const corsOptions = process.env.NODE_ENV === 'production'
   ? { origin: 'https://demarq.onrender.com', credentials: true }
   : { credentials: true };
