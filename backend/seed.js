@@ -241,8 +241,7 @@ async function seed() {
   await insFuel('2026-04-27', 'RETIRO', 10000.0, 'retiro 27 abril');
   await insFuel('2026-05-08', 'FACTURA_GAS', 2500.0, 'may-08');
   await insFuel('2026-05-18', 'FACTURA_GAS', 2200.0, 'may-18');
-  await insFuel('2026-05-18', 'APORTACION', 40915.0, 'Total aportaciones (ult. Aport. 18 may)');
-
+  await insFuel('2026-05-18', 'APORTACION', 40915.0, 'Total aportaciones (ult. Aport. 18 may)');  await insFuel('2026-05-18', 'APORTACION',  33358.98, 'Aportaciones anteriores (acumulado)');
   // ── REPORTES DE AVANCE ─────────────────────────────────────────────────
   // Pendientes
   await insAR(P.barandales, C.arturo,    420430, 'Avance estructura barandales',  '2026-05-14', 'pending');
