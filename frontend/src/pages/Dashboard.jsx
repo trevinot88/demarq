@@ -28,16 +28,16 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-brown">Dashboard</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-brown">Dashboard</h1>
         {current_week && (
-          <p className="text-brown/60 text-sm mt-1">
+          <p className="text-brown/60 text-xs md:text-sm mt-1">
             Semana actual: {formatWeekDate(current_week.week_date)}
           </p>
         )}
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
         <StatCard
           title="Rep. A Cta. (semana actual)"
           value={mxn(current_week_total)}
@@ -66,19 +66,19 @@ export default function Dashboard() {
 
       {/* Alertas saldo negativo */}
       {negative_alerts.length > 0 && (
-        <div className="glass-card p-4 border-red-500/40">
+        <div className="glass-card p-3 md:p-4 border-red-500/40">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={18} className="text-red-600" />
-            <h2 className="font-semibold text-red-600">Saldos Finales Negativos</h2>
+            <h2 className="text-sm md:text-base font-semibold text-red-600">Saldos Finales Negativos</h2>
           </div>
           <div className="space-y-2">
             {negative_alerts.map((a, i) => (
-              <div key={i} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
-                <div>
-                  <span className="text-brown font-medium">{a.contractor_name}</span>
-                  <span className="text-brown/60 text-sm ml-2">— {a.project_name}</span>
+              <div key={i} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-1.5 border-b border-gray-100 last:border-0">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                  <span className="text-brown font-medium text-sm">{a.contractor_name}</span>
+                  <span className="text-brown/60 text-xs sm:text-sm sm:ml-2">— {a.project_name}</span>
                 </div>
-                <span className="saldo-neg font-mono font-bold">{mxn(a.saldo_final)}</span>
+                <span className="saldo-neg font-mono font-bold text-sm">{mxn(a.saldo_final)}</span>
               </div>
             ))}
           </div>
@@ -88,25 +88,25 @@ export default function Dashboard() {
       {/* Resumen semana actual */}
       {current_week_summary.length > 0 && (
         <div className="glass-card">
-          <div className="px-5 py-4 border-b border-gray-200">
-            <h2 className="font-semibold text-brown">Resumen — Semana Actual</h2>
+          <div className="px-4 md:px-5 py-3 md:py-4 border-b border-gray-200">
+            <h2 className="text-sm md:text-base font-semibold text-brown">Resumen — Semana Actual</h2>
             <p className="text-xs text-brown/60 mt-0.5">Rep. A Cta. por contratista (todos sus proyectos)</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[400px]">
               <thead>
                 <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                  <th className="px-5 py-3 text-brown/50">#</th>
-                  <th className="px-5 py-3 text-brown/50">Contratista</th>
-                  <th className="px-5 py-3 text-right text-brown/50">Rep. A Cta.</th>
+                  <th className="px-3 md:px-5 py-3 text-brown/50">#</th>
+                  <th className="px-3 md:px-5 py-3 text-brown/50">Contratista</th>
+                  <th className="px-3 md:px-5 py-3 text-right text-brown/50">Rep. A Cta.</th>
                 </tr>
               </thead>
               <tbody>
                 {current_week_summary.filter(row => row.total > 0).map((row, i) => (
                   <tr key={row.contractor_name} className="table-row">
-                    <td className="px-5 py-3 text-brown/40 text-sm">{i + 1}</td>
-                    <td className="px-5 py-3 font-medium text-brown">{row.contractor_name}</td>
-                    <td className="px-5 py-3 text-right font-mono text-green-700 font-semibold">
+                    <td className="px-3 md:px-5 py-3 text-brown/40 text-sm">{i + 1}</td>
+                    <td className="px-3 md:px-5 py-3 font-medium text-brown text-sm">{row.contractor_name}</td>
+                    <td className="px-3 md:px-5 py-3 text-right font-mono text-green-700 font-semibold text-sm">
                       {mxn(row.total)}
                     </td>
                   </tr>
@@ -114,8 +114,8 @@ export default function Dashboard() {
               </tbody>
               <tfoot>
                 <tr className="border-t border-gray-200">
-                  <td colSpan={2} className="px-5 py-3 font-bold text-brown">TOTAL</td>
-                  <td className="px-5 py-3 text-right font-mono font-bold text-olive-dark text-lg">
+                  <td colSpan={2} className="px-3 md:px-5 py-3 font-bold text-brown text-sm md:text-base">TOTAL</td>
+                  <td className="px-3 md:px-5 py-3 text-right font-mono font-bold text-olive-dark text-base md:text-lg">
                     {mxn(current_week_total)}
                   </td>
                 </tr>

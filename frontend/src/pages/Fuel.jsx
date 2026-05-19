@@ -82,17 +82,17 @@ export default function FuelPage() {
   const disponible = summary ? summary.total_aportacion - summary.total_gas - summary.total_retiro : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Gasolinas / Caja</h1>
-        <button className="btn-primary flex items-center gap-2" onClick={openCreate}>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Gasolinas / Caja</h1>
+        <button className="btn-primary flex items-center gap-2 justify-center" onClick={openCreate}>
           <Plus size={16} /> Nueva Transacción
         </button>
       </div>
 
       {/* KPIs */}
       {summary && (
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
           <StatCard title="Total Gas (Facturas)" value={mxn(summary.total_gas)} icon={Fuel} color="blue" />
           <StatCard title="Total Aportaciones" value={mxn(summary.total_aportacion)} icon={TrendingUp} color="green" />
           <StatCard
@@ -113,18 +113,18 @@ export default function FuelPage() {
       )}
 
       {/* Filtros */}
-      <div className="glass-card p-4 flex flex-wrap gap-4 items-end">
+      <div className="glass-card p-3 md:p-4 flex flex-wrap gap-3 md:gap-4 items-end">
         <div>
           <label className="block text-xs text-gray-500 mb-1">Desde</label>
-          <input type="date" className="input-field w-44" value={dateFrom}
+          <input type="date" className="input-field w-full sm:w-44" value={dateFrom}
             onChange={e => setDateFrom(e.target.value)} />
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">Hasta</label>
-          <input type="date" className="input-field w-44" value={dateTo}
+          <input type="date" className="input-field w-full sm:w-44" value={dateTo}
             onChange={e => setDateTo(e.target.value)} />
         </div>
-        <button className="btn-secondary btn-sm" onClick={() => { setDateFrom(''); setDateTo(''); }}>
+        <button className="btn-secondary btn-sm text-xs" onClick={() => { setDateFrom(''); setDateTo(''); }}>
           Limpiar filtros
         </button>
       </div>
@@ -133,32 +133,32 @@ export default function FuelPage() {
       <div className="glass-card overflow-hidden">
         {loading ? <Spinner /> : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
-                  <th className="px-5 py-3 text-left">Fecha</th>
-                  <th className="px-5 py-3 text-left">Descripción</th>
-                  <th className="px-5 py-3 text-left">Tipo</th>
-                  <th className="px-5 py-3 text-right">Monto</th>
-                  <th className="px-5 py-3 text-right">Acciones</th>
+                  <th className="px-3 md:px-5 py-3 text-left">Fecha</th>
+                  <th className="px-3 md:px-5 py-3 text-left">Descripción</th>
+                  <th className="px-3 md:px-5 py-3 text-left">Tipo</th>
+                  <th className="px-3 md:px-5 py-3 text-right">Monto</th>
+                  <th className="px-3 md:px-5 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.length === 0 ? (
-                  <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-500">Sin transacciones</td></tr>
+                  <tr><td colSpan={5} className="px-3 md:px-5 py-8 text-center text-gray-500 text-sm">Sin transacciones</td></tr>
                 ) : transactions.map(t => (
                   <tr key={t.id} className="table-row text-sm">
-                    <td className="px-5 py-3 text-gray-700 font-mono">{fmtDate(t.date)}</td>
-                    <td className="px-5 py-3 text-gray-900">{t.description || '—'}</td>
-                    <td className="px-5 py-3">
-                      <span className={`tag ${TYPE_CLASS[t.type]}`}>{TYPE_LABEL[t.type]}</span>
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-gray-700 font-mono text-xs md:text-sm">{fmtDate(t.date)}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-gray-900 text-xs md:text-sm">{t.description || '—'}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3">
+                      <span className={`tag text-xs ${TYPE_CLASS[t.type]}`}>{TYPE_LABEL[t.type]}</span>
                     </td>
-                    <td className={`px-5 py-3 text-right font-mono font-semibold
+                    <td className={`px-3 md:px-5 py-2 md:py-3 text-right font-mono font-semibold text-xs md:text-sm
                       ${t.type === 'RETIRO' ? 'text-red-600' : 'text-green-600'}`}>
                       {t.type === 'RETIRO' ? '-' : ''}{mxn(t.amount)}
                     </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-3">
+                    <td className="px-3 md:px-5 py-2 md:py-3">
+                      <div className="flex justify-end gap-2 md:gap-3">
                         <button onClick={() => openEdit(t)} className="text-gray-400 hover:text-accent transition-colors">
                           <Pencil size={14} />
                         </button>

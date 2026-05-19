@@ -80,10 +80,10 @@ export default function Contractors() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-brown">Contratistas</h1>
-        <button className="btn-primary flex items-center gap-2" onClick={() => setModal({})}>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-bold text-brown">Contratistas</h1>
+        <button className="btn-primary flex items-center gap-2 justify-center" onClick={() => setModal({})}>
           <Plus size={16} /> Nuevo Contratista
         </button>
       </div>
@@ -99,34 +99,35 @@ export default function Contractors() {
 
       {loading ? <Spinner /> : (
         <div className="glass-card overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[500px]">
             <thead>
               <tr className="text-xs text-brown/50 uppercase tracking-wider border-b border-sand-light bg-sand-lightest/80">
-                <th className="px-5 py-3 text-left">Contratista</th>
-                <th className="px-5 py-3 text-right">Proyectos</th>
-                <th className="px-5 py-3 text-right">VP Total</th>
-                <th className="px-5 py-3 text-right">Acciones</th>
+                <th className="px-3 md:px-5 py-3 text-left">Contratista</th>
+                <th className="px-3 md:px-5 py-3 text-right">Proyectos</th>
+                <th className="px-3 md:px-5 py-3 text-right">VP Total</th>
+                <th className="px-3 md:px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={4} className="px-5 py-8 text-center text-brown/50">
+                <tr><td colSpan={4} className="px-3 md:px-5 py-8 text-center text-brown/50 text-sm">
                   {search ? 'Sin resultados' : 'No hay contratistas'}
                 </td></tr>
               ) : filtered.map(c => (
                 <tr key={c.id} className="table-row">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-olive/20 flex items-center justify-center shrink-0">
+                  <td className="px-3 md:px-5 py-2 md:py-3">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-olive/20 flex items-center justify-center shrink-0">
                         <span className="text-olive-dark text-xs font-bold">{c.name[0]}</span>
                       </div>
-                      <span className="font-medium text-brown">{c.name}</span>
+                      <span className="font-medium text-brown text-xs md:text-sm">{c.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-right text-brown/50 text-sm">{c.project_count}</td>
-                  <td className="px-5 py-3 text-right font-mono text-brown/70 text-sm">{mxn(c.total_vp)}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex justify-end gap-3">
+                  <td className="px-3 md:px-5 py-2 md:py-3 text-right text-brown/50 text-xs md:text-sm">{c.project_count}</td>
+                  <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-brown/70 text-xs md:text-sm">{mxn(c.total_vp)}</td>
+                  <td className="px-3 md:px-5 py-2 md:py-3">
+                    <div className="flex justify-end gap-2 md:gap-3">
                       <button onClick={() => setModal(c)} className="text-brown/30 hover:text-brown transition-colors">
                         <Pencil size={15} />
                       </button>
@@ -142,6 +143,7 @@ export default function Contractors() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

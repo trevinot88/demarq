@@ -18,18 +18,21 @@ const fmtDate = (d) => {
 function Section({ title, color, icon: Icon, children, count }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="mb-6">
+    <div className="mb-4 md:mb-6">
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm ${color} mb-2`}
+        className={`w-full flex items-center justify-between px-3 md:px-4 py-2.5 md:py-3 rounded-xl font-semibold text-xs md:text-sm ${color} mb-2`}
       >
         <span className="flex items-center gap-2">
-          <Icon size={16} /> {title}
-          <span className="ml-1 bg-white/30 text-xs px-2 py-0.5 rounded-full">{count}</span>
+          <Icon size={14} className="md:hidden" />
+          <Icon size={16} className="hidden md:block" />
+          {title}
+          <span className="ml-1 bg-white/30 text-xs px-1.5 md:px-2 py-0.5 rounded-full">{count}</span>
         </span>
-        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        {open ? <ChevronUp size={14} className="md:hidden" /> : <ChevronDown size={14} className="md:hidden" />}
+        {open ? <ChevronUp size={16} className="hidden md:block" /> : <ChevronDown size={16} className="hidden md:block" />}
       </button>
-      {open && <div className="space-y-3">{children}</div>}
+      {open && <div className="space-y-2 md:space-y-3">{children}</div>}
     </div>
   );
 }
@@ -42,15 +45,15 @@ function ReporteCard({ r, weeks, onAction }) {
   const [changeAmt, setChangeAmt] = useState(r.amount_reported);
 
   return (
-    <div className="bg-white border border-sand rounded-xl p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
+    <div className="bg-white border border-sand rounded-xl p-3 md:p-4 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-brown truncate">{r.project_name}</p>
-          <p className="text-sm text-gray-900 font-medium">{r.contractor_name}</p>
+          <p className="font-semibold text-brown truncate text-sm md:text-base">{r.project_name}</p>
+          <p className="text-xs md:text-sm text-gray-900 font-medium">{r.contractor_name}</p>
           {r.description && (
             <p className="text-xs text-gray-500 mt-1 italic">"{r.description}"</p>
           )}
-          <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-600">
+          <div className="flex flex-wrap gap-2 md:gap-3 mt-2 text-xs text-gray-600">
             <span>Reportado: <strong>{fmt(r.amount_reported)}</strong></span>
             {r.amount_accepted != null && (
               <span>Aceptado: <strong className="text-olive-dark">{fmt(r.amount_accepted)}</strong></span>
@@ -63,20 +66,24 @@ function ReporteCard({ r, weeks, onAction }) {
         </div>
 
         {/* Acciones */}
-        <div className="flex flex-col gap-1.5 shrink-0">
+        <div className="flex md:flex-col gap-1.5 justify-end">
           {r.status === 'pending' && !accepting && !changing && (
             <>
               <button
                 onClick={() => { setAccepting(true); setAcceptAmt(r.amount_reported); }}
-                className="btn-sm bg-green-600 text-white hover:bg-green-700"
+                className="btn-sm bg-green-600 text-white hover:bg-green-700 text-xs"
               >
-                <CheckCircle size={13} /> Aceptar
+                <CheckCircle size={12} className="md:hidden" />
+                <CheckCircle size={13} className="hidden md:block" />
+                <span className="hidden sm:inline">Aceptar</span>
               </button>
               <button
                 onClick={() => { setChanging(true); setChangeAmt(r.amount_reported); }}
-                className="btn-sm bg-amber-500 text-white hover:bg-amber-600"
+                className="btn-sm bg-amber-500 text-white hover:bg-amber-600 text-xs"
               >
-                <XCircle size={13} /> Cambiar monto
+                <XCircle size={12} className="md:hidden" />
+                <XCircle size={13} className="hidden md:block" />
+                <span className="hidden sm:inline">Cambiar monto</span>
               </button>
             </>
           )}
@@ -84,9 +91,11 @@ function ReporteCard({ r, weeks, onAction }) {
             <>
               <button
                 onClick={() => onAction('pasar', r.id)}
-                className="btn-sm bg-brown text-white hover:bg-brown/80"
+                className="btn-sm bg-brown text-white hover:bg-brown/80 text-xs"
               >
-                <ArrowRight size={13} /> Pasar
+                <ArrowRight size={12} className="md:hidden" />
+                <ArrowRight size={13} className="hidden md:block" />
+                <span className="hidden sm:inline">Pasar</span>
               </button>
               <button
                 onClick={() => onAction('reset', r.id)}
@@ -108,7 +117,8 @@ function ReporteCard({ r, weeks, onAction }) {
             onClick={() => onAction('delete', r.id)}
             className="btn-sm text-red-400 hover:bg-red-50 border border-red-200"
           >
-            <Trash2 size={13} />
+            <Trash2 size={12} className="md:hidden" />
+            <Trash2 size={13} className="hidden md:block" />
           </button>
         </div>
       </div>
@@ -329,16 +339,16 @@ export default function Reportes() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-brown">Reportes de Avance</h1>
-          <p className="text-sm text-olive mt-0.5">
+          <h1 className="text-xl md:text-2xl font-bold text-brown">Reportes de Avance</h1>
+          <p className="text-xs md:text-sm text-olive mt-0.5">
             {reportes.length} reporte{reportes.length !== 1 ? 's' : ''} · {pending.length} pendiente{pending.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-2 justify-center"
         >
           <Plus size={16} /> Nuevo Reporte
         </button>

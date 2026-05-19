@@ -92,10 +92,10 @@ export default function Projects() {
   const closed = projects.filter(p => p.status === 'closed');
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-brown">Proyectos</h1>
-        <button className="btn-primary flex items-center gap-2" onClick={() => setModal({})}>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-bold text-brown">Proyectos</h1>
+        <button className="btn-primary flex items-center gap-2 justify-center" onClick={() => setModal({})}>
           <Plus size={16} /> Nuevo Proyecto
         </button>
       </div>
@@ -114,28 +114,29 @@ export default function Projects() {
                     <Link
                       key={p.id}
                       to={`/projects/${p.id}`}
-                      className="flex items-center px-5 py-4 hover:bg-sand-light/40 transition-colors group"
+                      className="flex items-center px-4 md:px-5 py-3 md:py-4 hover:bg-sand-light/40 transition-colors group"
                     >
-                      <div className="w-9 h-9 rounded-xl bg-olive/15 flex items-center justify-center mr-4 shrink-0">
-                        <FolderKanban size={17} className="text-olive-dark" />
+                      <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-olive/15 flex items-center justify-center mr-3 md:mr-4 shrink-0">
+                        <FolderKanban size={16} className="text-olive-dark md:hidden" />
+                        <FolderKanban size={17} className="text-olive-dark hidden md:block" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-brown truncate">{p.name}</p>
+                        <p className="font-semibold text-brown truncate text-sm md:text-base">{p.name}</p>
                         <p className="text-xs text-brown/50">
                           {p.client_name || 'Sin cliente'} · {p.contractor_count} contratista{p.contractor_count !== 1 ? 's' : ''}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 ml-4">
-                        <span className={`tag ${STATUS_CLASS[p.status]}`}>{STATUS_LABEL[p.status]}</span>
+                      <div className="flex items-center gap-2 md:gap-3 ml-3 md:ml-4">
+                        <span className={`tag text-xs ${STATUS_CLASS[p.status]}`}>{STATUS_LABEL[p.status]}</span>
                         <button
                           onClick={(e) => { e.preventDefault(); setModal(p); }}
-                          className="text-brown/30 hover:text-brown transition-colors"
+                          className="text-brown/30 hover:text-brown transition-colors hidden sm:block"
                         >
                           <Pencil size={15} />
                         </button>
                         <button
                           onClick={(e) => { e.preventDefault(); handleDelete(p); }}
-                          className="text-brown/30 hover:text-red-500 transition-colors"
+                          className="text-brown/30 hover:text-red-500 transition-colors hidden sm:block"
                         >
                           <Trash2 size={15} />
                         </button>

@@ -64,13 +64,13 @@ export default function ProjectDetail() {
   const unassigned  = allContractors.filter(c => !assignedIds.has(c.id));
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 md:space-y-6 pb-8 md:pb-12">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link to="/projects" className="text-gray-400 hover:text-gray-700"><ArrowLeft size={20} /></Link>
+      <div className="flex items-center gap-3 md:gap-4">
+        <Link to="/projects" className="text-gray-400 hover:text-gray-700"><ArrowLeft size={18} className="md:hidden" /><ArrowLeft size={20} className="hidden md:block" /></Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-lg md:text-2xl font-bold text-gray-900">{project.name}</h1>
+          <p className="text-xs md:text-sm text-gray-500">
             {project.client_name || 'Sin cliente'} ·{' '}
             <span className={project.status === 'active' ? 'text-green-400' : 'text-gray-400'}>
               {project.status === 'active' ? 'Activo' : 'Cerrado'}
@@ -81,23 +81,24 @@ export default function ProjectDetail() {
 
       {/* Contratistas asignados */}
       <div className="glass-card overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
-          <span className="font-semibold text-gray-900">Contratistas Asignados</span>
-          <button onClick={() => setShowAssign(true)} className="btn-primary btn-sm flex items-center gap-1">
-            <Plus size={14} /> Asignar
+        <div className="flex items-center justify-between px-4 md:px-5 py-3 bg-gray-50 border-b border-gray-200">
+          <span className="text-sm md:text-base font-semibold text-gray-900">Contratistas Asignados</span>
+          <button onClick={() => setShowAssign(true)} className="btn-primary btn-sm flex items-center gap-1 text-xs">
+            <Plus size={14} /> <span className="hidden sm:inline">Asignar</span>
           </button>
         </div>
         {contractors.length === 0 ? (
-          <p className="px-5 py-6 text-gray-500 text-sm">No hay contratistas asignados.</p>
+          <p className="px-4 md:px-5 py-6 text-gray-500 text-sm">No hay contratistas asignados.</p>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                <th className="px-5 py-3 text-left">Contratista</th>
-                <th className="px-5 py-3 text-right">V.P.</th>
-                <th className="px-5 py-3 text-right">Pagado</th>
-                <th className="px-5 py-3 text-right">Saldo</th>
-                <th className="px-5 py-3 text-right">Acciones</th>
+                <th className="px-3 md:px-5 py-3 text-left">Contratista</th>
+                <th className="px-3 md:px-5 py-3 text-right">V.P.</th>
+                <th className="px-3 md:px-5 py-3 text-right">Pagado</th>
+                <th className="px-3 md:px-5 py-3 text-right">Saldo</th>
+                <th className="px-3 md:px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -105,16 +106,16 @@ export default function ProjectDetail() {
                 const saldo = c.valor_presupuesto - c.total_pagado;
                 return (
                   <tr key={c.contractor_id} className="table-row text-sm">
-                    <td className="px-5 py-3 text-gray-900 font-medium">{c.contractor_name}</td>
-                    <td className="px-5 py-3 text-right font-mono text-gray-700">{mxn(c.valor_presupuesto)}</td>
-                    <td className="px-5 py-3 text-right font-mono text-gray-600">{mxn(c.total_pagado)}</td>
-                    <td className={`px-5 py-3 text-right font-mono font-semibold ${
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-gray-900 font-medium text-xs md:text-sm">{c.contractor_name}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-gray-700 text-xs md:text-sm">{mxn(c.valor_presupuesto)}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-gray-600 text-xs md:text-sm">{mxn(c.total_pagado)}</td>
+                    <td className={`px-3 md:px-5 py-2 md:py-3 text-right font-mono font-semibold text-xs md:text-sm ${
                       saldo < 0 ? 'text-red-600' : saldo === 0 ? 'text-gray-400' : 'text-green-600'
                     }`}>
                       {mxn(saldo)}
                     </td>
-                    <td className="px-5 py-3 text-right">
-                    <div className="flex justify-end gap-3">
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-right">
+                    <div className="flex justify-end gap-2 md:gap-3">
                       <button
                         onClick={() => { setEditBudget(c); setBudgetVal(c.valor_presupuesto); }}
                         className="text-gray-400 hover:text-accent transition-colors"
@@ -130,35 +131,38 @@ export default function ProjectDetail() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
       {/* Historial de semanas */}
       {history.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
-            <span className="font-semibold text-gray-900">Historial Semanal</span>
+          <div className="px-4 md:px-5 py-3 bg-gray-50 border-b border-gray-200">
+            <span className="text-sm md:text-base font-semibold text-gray-900">Historial Semanal</span>
           </div>
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[500px]">
             <thead>
               <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                <th className="px-5 py-3 text-left">Semana</th>
-                <th className="px-5 py-3 text-right">Ent. A Cta.</th>
-                <th className="px-5 py-3 text-right">Rep. A Cta.</th>
-                <th className="px-5 py-3 text-right">Contratistas</th>
+                <th className="px-3 md:px-5 py-3 text-left">Semana</th>
+                <th className="px-3 md:px-5 py-3 text-right">Ent. A Cta.</th>
+                <th className="px-3 md:px-5 py-3 text-right">Rep. A Cta.</th>
+                <th className="px-3 md:px-5 py-3 text-right">Contratistas</th>
               </tr>
             </thead>
             <tbody>
               {history.map((h, i) => (
                 <tr key={i} className="table-row text-sm">
-                  <td className="px-5 py-3 text-gray-900 capitalize">{formatWeekDate(h.week_date)}</td>
-                  <td className="px-5 py-3 text-right font-mono text-gray-700">{mxn(h.total_ent)}</td>
-                  <td className="px-5 py-3 text-right font-mono text-green-600 font-semibold">{mxn(h.total_rep)}</td>
-                  <td className="px-5 py-3 text-right text-gray-500">{h.contractors_active}</td>
+                  <td className="px-3 md:px-5 py-2 md:py-3 text-gray-900 capitalize text-xs md:text-sm">{formatWeekDate(h.week_date)}</td>
+                  <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-gray-700 text-xs md:text-sm">{mxn(h.total_ent)}</td>
+                  <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-green-600 font-semibold text-xs md:text-sm">{mxn(h.total_rep)}</td>
+                  <td className="px-3 md:px-5 py-2 md:py-3 text-right text-gray-500 text-xs md:text-sm">{h.contractors_active}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
