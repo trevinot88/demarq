@@ -6,7 +6,7 @@ import { Plus, ChevronRight, FolderKanban, Pencil, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal.jsx';
 
 const STATUS_LABEL = { active: 'Activo', closed: 'Cerrado' };
-const STATUS_CLASS  = { active: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-600' };
+const STATUS_CLASS  = { active: 'bg-olive/20 text-brown', closed: 'bg-sand-light text-brown/50' };
 
 function ProjectModal({ project, onClose, onSaved }) {
   const editing = !!project?.id;
@@ -39,17 +39,17 @@ function ProjectModal({ project, onClose, onSaved }) {
     <Modal title={editing ? 'Editar Proyecto' : 'Nuevo Proyecto'} onClose={onClose} size="sm">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-gray-500 mb-1">Nombre *</label>
+          <label className="block text-sm text-brown/60 mb-1">Nombre *</label>
           <input className="input-field" value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value.toUpperCase() }))} />
         </div>
         <div>
-          <label className="block text-sm text-gray-500 mb-1">Cliente</label>
+          <label className="block text-sm text-brown/60 mb-1">Cliente</label>
           <input className="input-field" value={form.client_name}
             onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} />
         </div>
         <div>
-          <label className="block text-sm text-gray-500 mb-1">Estatus</label>
+          <label className="block text-sm text-brown/60 mb-1">Estatus</label>
           <select className="input-field" value={form.status}
             onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
             <option value="active">Activo</option>
@@ -94,7 +94,7 @@ export default function Projects() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Proyectos</h1>
+        <h1 className="text-2xl font-bold text-brown">Proyectos</h1>
         <button className="btn-primary flex items-center gap-2" onClick={() => setModal({})}>
           <Plus size={16} /> Nuevo Proyecto
         </button>
@@ -105,31 +105,31 @@ export default function Projects() {
           {[{ label: 'Activos', list: active }, { label: 'Cerrados', list: closed }].map(({ label, list }) =>
             list.length > 0 && (
               <div key={label} className="glass-card overflow-hidden">
-                <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
-                  <span className="font-semibold text-gray-900">{label}</span>
-                  <span className="ml-2 text-gray-400 text-sm">({list.length})</span>
+                <div className="px-5 py-3 bg-sand-light/40 border-b border-sand-light">
+                  <span className="font-semibold text-brown">{label}</span>
+                  <span className="ml-2 text-brown/40 text-sm">({list.length})</span>
                 </div>
                 <div className="divide-y divide-gray-100">
                   {list.map(p => (
-                    <div key={p.id} className="flex items-center px-5 py-4 hover:bg-orange-50/40 transition-colors group">
-                      <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center mr-4 shrink-0">
-                        <FolderKanban size={17} className="text-accent" />
+                    <div key={p.id} className="flex items-center px-5 py-4 hover:bg-sand-light/40 transition-colors group">
+                      <div className="w-9 h-9 rounded-xl bg-olive/15 flex items-center justify-center mr-4 shrink-0">
+                        <FolderKanban size={17} className="text-olive-dark" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 truncate">{p.name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="font-semibold text-brown truncate">{p.name}</p>
+                        <p className="text-xs text-brown/50">
                           {p.client_name || 'Sin cliente'} · {p.contractor_count} contratista{p.contractor_count !== 1 ? 's' : ''}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 ml-4">
                         <span className={`tag ${STATUS_CLASS[p.status]}`}>{STATUS_LABEL[p.status]}</span>
-                        <button onClick={() => setModal(p)} className="text-gray-400 hover:text-gray-700 transition-colors">
+                        <button onClick={() => setModal(p)} className="text-brown/30 hover:text-brown transition-colors">
                           <Pencil size={15} />
                         </button>
-                        <button onClick={() => handleDelete(p)} className="text-gray-400 hover:text-red-500 transition-colors">
+                        <button onClick={() => handleDelete(p)} className="text-brown/30 hover:text-red-500 transition-colors">
                           <Trash2 size={15} />
                         </button>
-                        <Link to={`/projects/${p.id}`} className="text-gray-400 hover:text-accent transition-colors">
+                        <Link to={`/projects/${p.id}`} className="text-brown/30 hover:text-olive-dark transition-colors">
                           <ChevronRight size={18} />
                         </Link>
                       </div>
@@ -140,7 +140,7 @@ export default function Projects() {
             )
           )}
           {projects.length === 0 && (
-            <div className="glass-card p-10 text-center text-gray-500">
+            <div className="glass-card p-10 text-center text-brown/50">
               <FolderKanban size={40} className="mx-auto mb-3 opacity-30" />
               <p>No hay proyectos</p>
               <button className="btn-primary btn-sm mt-4" onClick={() => setModal({})}>Crear proyecto</button>
@@ -163,7 +163,7 @@ export default function Projects() {
 function Spinner() {
   return (
     <div className="flex items-center justify-center h-48">
-      <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-olive/30 border-t-olive rounded-full animate-spin" />
     </div>
   );
 }

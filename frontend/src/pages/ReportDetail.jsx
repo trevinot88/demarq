@@ -27,14 +27,14 @@ function EditCell({ value, onSave, className = '', isCurrency = false, readOnly 
           if (e.key === 'Enter') { setEditing(false); onSave(draft); }
           if (e.key === 'Escape') { setEditing(false); setDraft(value); }
         }}
-        className="w-full bg-white border border-accent/60 rounded px-2 py-1 text-gray-900 text-sm font-mono focus:outline-none"
+        className="w-full bg-sand-lightest border border-olive/60 rounded px-2 py-1 text-brown text-sm font-mono focus:outline-none"
       />
     );
   }
 
   return (
     <span
-      className={`cursor-pointer hover:bg-orange-50 px-1 py-0.5 rounded transition-colors ${className}`}
+      className={`cursor-pointer hover:bg-sand-light/60 px-1 py-0.5 rounded transition-colors ${className}`}
       onClick={() => { setEditing(true); setDraft(value); }}
       title="Clic para editar"
     >
@@ -61,7 +61,7 @@ function EntryRow({ entry, reportId, onUpdated, onDelete }) {
   return (
     <tr className="table-row text-sm">
       <td className="px-4 py-2.5 text-gray-600">{entry.contractor_name}</td>
-      <td className="px-4 py-2.5 text-right font-mono text-gray-600">{mxn(vp)}</td>
+          <td className="px-4 py-2.5 text-right font-mono text-brown/60">{mxn(vp)}</td>
       <td className="px-4 py-2.5 text-right font-mono">
         <EditCell value={entry.ent_a_cta} isCurrency onSave={v => save('ent_a_cta', v)} />
       </td>
@@ -220,8 +220,8 @@ export default function ReportDetail() {
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 capitalize">{formatWeekDate(report.week_date)}</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Haz clic en cualquier valor para editarlo en línea</p>
+            <h1 className="text-2xl font-bold text-brown capitalize">{formatWeekDate(report.week_date)}</h1>
+            <p className="text-xs text-brown/50 mt-0.5">Haz clic en cualquier valor para editarlo en línea</p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -258,7 +258,7 @@ export default function ReportDetail() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-blue-50/30">
+                  <tr className="text-xs text-brown/50 uppercase tracking-wider border-b border-sand-light bg-sand-lightest/80">
                     <th className="px-4 py-2.5 text-left">Contratista</th>
                     <th className="px-4 py-2.5 text-right">V.P.</th>
                     <th className="px-4 py-2.5 text-right">Ent. A Cta.</th>
@@ -288,11 +288,11 @@ export default function ReportDetail() {
 
       {/* Oficina */}
       <div className="glass-card overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
-          <span className="font-bold text-gray-900">OFICINA</span>
+        <div className="flex items-center justify-between px-5 py-3 bg-sand-light/40 border-b border-sand-light">
+          <span className="font-bold text-brown">OFICINA</span>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">
-              Total: <span className="text-green-600 font-mono">{mxn(total_office)}</span>
+            <span className="text-sm text-brown/60">
+              Total: <span className="text-green-700 font-mono">{mxn(total_office)}</span>
             </span>
             <button onClick={() => setShowAddOffice(true)} className="btn-primary btn-sm flex items-center gap-1">
               <Plus size={14} /> Agregar
@@ -302,7 +302,7 @@ export default function ReportDetail() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-blue-50/30">
+              <tr className="text-xs text-brown/50 uppercase tracking-wider border-b border-sand-light bg-sand-lightest/80">
                 <th className="px-4 py-2.5 text-left">Persona</th>
                 <th className="px-4 py-2.5 text-right">Monto</th>
                 <th className="px-4 py-2.5" />
@@ -324,32 +324,32 @@ export default function ReportDetail() {
       </div>
 
       {/* Totales generales */}
-      <div className="glass-card p-5 border-accent/20">
+<div className="glass-card p-5 border-olive/20">
         <div className="flex flex-wrap gap-6 justify-between items-center">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Proyectos</p>
-            <p className="text-xl font-bold text-gray-900 font-mono">{mxn(total_projects)}</p>
+            <p className="text-xs text-brown/50 uppercase tracking-wider">Total Proyectos</p>
+            <p className="text-xl font-bold text-brown font-mono">{mxn(total_projects)}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Oficina</p>
-            <p className="text-xl font-bold text-gray-900 font-mono">{mxn(total_office)}</p>
+            <p className="text-xs text-brown/50 uppercase tracking-wider">Total Oficina</p>
+            <p className="text-xl font-bold text-brown font-mono">{mxn(total_office)}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">TOTAL GENERAL</p>
-            <p className="text-3xl font-bold text-accent font-mono">{mxn(total_general)}</p>
+            <p className="text-xs text-brown/50 uppercase tracking-wider">TOTAL GENERAL</p>
+            <p className="text-3xl font-bold text-olive-dark font-mono">{mxn(total_general)}</p>
           </div>
         </div>
       </div>
 
       {/* Resumen por contratista */}
       <div className="glass-card overflow-hidden">
-        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
-          <span className="font-bold text-gray-900">RESUMEN — Contratistas</span>
+        <div className="px-5 py-3 bg-sand-light/40 border-b border-sand-light">
+          <span className="font-bold text-brown">RESUMEN — Contratistas</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
+              <tr className="text-xs text-brown/50 uppercase tracking-wider border-b border-sand-light">
                 <th className="px-5 py-3 text-left">#</th>
                 <th className="px-5 py-3 text-left">Contratista</th>
                 <th className="px-5 py-3 text-right">Rep. A Cta.</th>
@@ -358,16 +358,16 @@ export default function ReportDetail() {
             <tbody>
               {summary.map((s, i) => (
                 <tr key={s.contractor_id} className="table-row text-sm">
-                  <td className="px-5 py-2.5 text-gray-500">{i + 1}</td>
-                  <td className="px-5 py-2.5 font-medium text-gray-900">{s.contractor_name}</td>
-                  <td className="px-5 py-2.5 text-right font-mono text-green-400 font-semibold">{mxn(s.total_rep_a_cta)}</td>
+                  <td className="px-5 py-2.5 text-brown/50">{i + 1}</td>
+                  <td className="px-5 py-2.5 font-medium text-brown">{s.contractor_name}</td>
+                  <td className="px-5 py-2.5 text-right font-mono text-green-700 font-semibold">{mxn(s.total_rep_a_cta)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-gray-300">
-                <td colSpan={2} className="px-5 py-3 font-bold text-gray-900">TOTAL GENERAL</td>
-                <td className="px-5 py-3 text-right font-mono font-bold text-accent text-lg">{mxn(total_general)}</td>
+              <tr className="border-t border-sand">
+                <td colSpan={2} className="px-5 py-3 font-bold text-brown">TOTAL GENERAL</td>
+                <td className="px-5 py-3 text-right font-mono font-bold text-olive-dark text-lg">{mxn(total_general)}</td>
               </tr>
             </tfoot>
           </table>

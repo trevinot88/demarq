@@ -4,14 +4,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        navy: {
-          DEFAULT: '#1d4ed8',
-          light:   '#e2e8f0',
-          dark:    '#f0f4f8',
+        sand: {
+          lightest: '#FFF4E4',
+          light:    '#F8E0C9',
+          DEFAULT:  '#e8c9a0',
+          dark:     '#d4a97a',
         },
+        brown: {
+          DEFAULT: '#2B1A12',
+          light:   '#4a2e1e',
+          lighter: '#6b4226',
+        },
+        olive: {
+          DEFAULT: '#B1AA81',
+          dark:    '#8a8460',
+          light:   '#d4d0b8',
+        },
+        // Keep accent for backward compat in export xlsx styles
         accent: {
-          DEFAULT: '#f97316',
-          dark:    '#ea580c',
+          DEFAULT: '#B1AA81',
+          dark:    '#8a8460',
         },
       },
       fontFamily: {

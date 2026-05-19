@@ -11,9 +11,9 @@ import Fuel        from './pages/Fuel.jsx';
 
 export default function App() {
   return (
-    <div className="flex min-h-screen bg-navy-dark">
+    <div className="flex min-h-screen bg-sand-lightest">
       <Sidebar />
-      <main className="flex-1 ml-64 min-h-screen overflow-auto bg-navy-dark">
+      <main className="flex-1 ml-64 min-h-screen overflow-auto bg-sand-lightest">
         <div className="p-6">
           <Routes>
             <Route path="/"                        element={<Dashboard />} />

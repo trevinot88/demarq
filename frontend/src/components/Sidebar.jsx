@@ -14,15 +14,15 @@ const links = [
 
 export default function Sidebar() {
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-navy shadow-xl flex flex-col z-40">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-brown shadow-xl flex flex-col z-40">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-6 border-b border-white/10">
-        <div className="w-9 h-9 bg-accent rounded-lg flex items-center justify-center shrink-0">
-          <HardHat size={20} className="text-white" />
+        <div className="w-9 h-9 bg-olive rounded-lg flex items-center justify-center shrink-0">
+          <HardHat size={20} className="text-brown" />
         </div>
         <div>
-          <p className="font-bold text-white leading-tight">DEMARQ</p>
-          <p className="text-xs text-blue-200 leading-tight">Admin</p>
+          <p className="font-bold text-sand-lightest leading-tight">DEMARQ</p>
+          <p className="text-xs text-olive-light leading-tight">Admin</p>
         </div>
       </div>
 
@@ -45,7 +45,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-white/10">
-        <p className="text-xs text-blue-400/60 text-center">v1.0 · DEMARQ Admin</p>
+        <p className="text-xs text-olive/60 text-center">v1.0 · DEMARQ Admin</p>
       </div>
     </aside>
   );

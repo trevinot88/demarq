@@ -39,7 +39,7 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Relación Semanal</h1>
+        <h1 className="text-2xl font-bold text-brown">Relación Semanal</h1>
         <button className="btn-primary flex items-center gap-2" onClick={() => setShowModal(true)}>
           <Plus size={16} /> Nueva Semana
         </button>
@@ -63,13 +63,13 @@ export default function Reports() {
               className="glass-card p-4 flex items-center justify-between hover:border-accent/30 transition-colors group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
-                  <Calendar size={18} className="text-accent" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900 capitalize">{formatWeekDate(w.week_date)}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Total Rep. A Cta.: <span className="text-green-400 font-mono">{mxn(w.total_general)}</span>
+            <div className="w-10 h-10 rounded-xl bg-olive/20 flex items-center justify-center shrink-0">
+                <Calendar size={18} className="text-olive-dark" />
+              </div>
+              <div>
+                <p className="font-semibold text-brown capitalize">{formatWeekDate(w.week_date)}</p>
+                <p className="text-xs text-brown/60 mt-0.5">
+                  Total Rep. A Cta.: <span className="text-green-700 font-mono">{mxn(w.total_general)}</span>
                   </p>
                 </div>
               </div>

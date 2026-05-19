@@ -250,23 +250,7 @@ router.delete('/:id/office/:payId', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── PUT /api/reports/:id/office/:payId  ──────────────────────────────────────
-router.put('/:id/office/:payId', (req, res) => {
-  const { person_name, amount } = req.body;
-  db.prepare(`
-    UPDATE office_payments
-       SET person_name = COALESCE(?, person_name),
-           amount      = COALESCE(?, amount)
-     WHERE id = ? AND report_id = ?
-  `).run(person_name, amount, req.params.payId, req.params.id);
-  res.json({ ok: true });
-});
 
-// ── DELETE /api/reports/:id/office/:payId  ───────────────────────────────────
-router.delete('/:id/office/:payId', (req, res) => {
-  db.prepare(`DELETE FROM office_payments WHERE id = ? AND report_id = ?`).run(req.params.payId, req.params.id);
-  res.json({ ok: true });
-});
 
 // ── GET /api/reports/:id/export — xlsx ──────────────────────────────────────
 router.get('/:id/export', async (req, res) => {

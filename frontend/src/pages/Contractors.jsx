@@ -82,7 +82,7 @@ export default function Contractors() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Contratistas</h1>
+        <h1 className="text-2xl font-bold text-brown">Contratistas</h1>
         <button className="btn-primary flex items-center gap-2" onClick={() => setModal({})}>
           <Plus size={16} /> Nuevo Contratista
         </button>
@@ -101,7 +101,7 @@ export default function Contractors() {
         <div className="glass-card overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-gray-50">
+              <tr className="text-xs text-brown/50 uppercase tracking-wider border-b border-sand-light bg-sand-lightest/80">
                 <th className="px-5 py-3 text-left">Contratista</th>
                 <th className="px-5 py-3 text-right">Proyectos</th>
                 <th className="px-5 py-3 text-right">VP Total</th>
@@ -110,30 +110,30 @@ export default function Contractors() {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-500">
+                <tr><td colSpan={4} className="px-5 py-8 text-center text-brown/50">
                   {search ? 'Sin resultados' : 'No hay contratistas'}
                 </td></tr>
               ) : filtered.map(c => (
                 <tr key={c.id} className="table-row">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
-                        <span className="text-accent text-xs font-bold">{c.name[0]}</span>
+                      <div className="w-8 h-8 rounded-full bg-olive/20 flex items-center justify-center shrink-0">
+                        <span className="text-olive-dark text-xs font-bold">{c.name[0]}</span>
                       </div>
-                      <span className="font-medium text-gray-900">{c.name}</span>
+                      <span className="font-medium text-brown">{c.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-right text-gray-500 text-sm">{c.project_count}</td>
-                  <td className="px-5 py-3 text-right font-mono text-gray-700 text-sm">{mxn(c.total_vp)}</td>
+                  <td className="px-5 py-3 text-right text-brown/50 text-sm">{c.project_count}</td>
+                  <td className="px-5 py-3 text-right font-mono text-brown/70 text-sm">{mxn(c.total_vp)}</td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-3">
-                      <button onClick={() => setModal(c)} className="text-gray-400 hover:text-gray-700 transition-colors">
+                      <button onClick={() => setModal(c)} className="text-brown/30 hover:text-brown transition-colors">
                         <Pencil size={15} />
                       </button>
-                      <button onClick={() => handleDelete(c)} className="text-gray-400 hover:text-red-500 transition-colors">
+                      <button onClick={() => handleDelete(c)} className="text-brown/30 hover:text-red-500 transition-colors">
                         <Trash2 size={15} />
                       </button>
-                      <Link to={`/contractors/${c.id}`} className="text-gray-400 hover:text-accent transition-colors">
+                      <Link to={`/contractors/${c.id}`} className="text-brown/30 hover:text-olive-dark transition-colors">
                         <ChevronRight size={18} />
                       </Link>
                     </div>

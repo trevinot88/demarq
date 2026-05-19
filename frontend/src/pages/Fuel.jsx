@@ -12,7 +12,7 @@ const TYPE_LABEL = {
   RETIRO:      'Retiro',
 };
 const TYPE_CLASS = {
-  FACTURA_GAS: 'bg-blue-100 text-blue-700',
+  FACTURA_GAS: 'bg-olive/20 text-olive-dark',
   APORTACION:  'bg-green-100 text-green-700',
   RETIRO:      'bg-red-100 text-red-700',
 };
