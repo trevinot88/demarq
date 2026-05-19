@@ -14,9 +14,12 @@ const PORT = process.env.PORT || 3001;
 // Trust Render's reverse proxy so secure cookies work over HTTPS
 app.set('trust proxy', 1);
 
-const corsOptions = process.env.NODE_ENV === 'production'
-  ? { origin: 'https://demarq.onrender.com', credentials: true }
-  : { credentials: true };
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? 'https://demarq.onrender.com'
+    : 'http://localhost:5173',
+  credentials: true,
+};
 app.use(cors(corsOptions));
 app.use(express.json());
 
