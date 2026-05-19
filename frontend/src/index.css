@@ -40,7 +40,17 @@
   }
 
   .btn-sm {
-    @apply px-3 py-1.5 text-sm;
+    @apply inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors font-medium;
+  }
+
+  .input-base {
+    @apply bg-sand-lightest border border-sand rounded-lg px-3 py-2 text-brown text-sm
+           focus:outline-none focus:ring-2 focus:ring-olive/40 focus:border-olive/60
+           placeholder-sand-dark;
+  }
+
+  .label-base {
+    @apply block text-xs font-semibold text-brown/70 mb-1 uppercase tracking-wide;
   }
 
   .input-field {

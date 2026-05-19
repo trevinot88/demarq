@@ -41,6 +41,7 @@ app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/dashboard',   requireAuth, require('./routes/dashboard'));
 app.use('/api/projects',    requireAuth, require('./routes/projects'));
 app.use('/api/contractors', requireAuth, require('./routes/contractors'));
+app.use('/api/reportes',    requireAuth, require('./routes/reportes'));
 app.use('/api/reports',     requireAuth, require('./routes/reports'));
 app.use('/api/fuel',        requireAuth, require('./routes/fuel'));
 

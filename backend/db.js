@@ -69,6 +69,22 @@ async function initSchema() {
       description TEXT    DEFAULT '',
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+    // vp = valor pendiente (saldo al inicio de la semana)
+    `ALTER TABLE report_entries ADD COLUMN IF NOT EXISTS vp REAL NOT NULL DEFAULT 0`,
+    `CREATE TABLE IF NOT EXISTS advancement_reports (
+      id               SERIAL PRIMARY KEY,
+      project_id       INTEGER NOT NULL REFERENCES projects(id)     ON DELETE CASCADE,
+      contractor_id    INTEGER NOT NULL REFERENCES contractors(id)  ON DELETE CASCADE,
+      amount_reported  REAL    NOT NULL DEFAULT 0,
+      amount_accepted  REAL,
+      description      TEXT    DEFAULT '',
+      status           TEXT    NOT NULL DEFAULT 'pending'
+                         CHECK(status IN ('pending','accepted','rejected')),
+      report_date      DATE    NOT NULL DEFAULT CURRENT_DATE,
+      accepted_date    DATE,
+      weekly_report_id INTEGER REFERENCES weekly_reports(id),
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
   ];
 
   for (const sql of statements) {

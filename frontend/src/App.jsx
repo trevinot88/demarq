@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar.jsx';
 import Dashboard   from './pages/Dashboard.jsx';
+import Reportes    from './pages/Reportes.jsx';
 import Reports     from './pages/Reports.jsx';
 import ReportDetail from './pages/ReportDetail.jsx';
 import Projects    from './pages/Projects.jsx';
@@ -33,6 +34,7 @@ export default function App() {
         <div className="p-6">
           <Routes>
             <Route path="/"                        element={<Dashboard />} />
+            <Route path="/reportes"                element={<Reportes />} />
             <Route path="/reports"                 element={<Reports />} />
             <Route path="/reports/:id"             element={<ReportDetail />} />
             <Route path="/projects"                element={<Projects />} />

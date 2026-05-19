@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, FolderKanban,
-  Users, Fuel, HardHat, LogOut,
+  Users, Fuel, HardHat, LogOut, FileCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const links = [
   { to: '/',            label: 'Dashboard',          icon: LayoutDashboard },
+  { to: '/reportes',    label: 'Reportes',            icon: FileCheck       },
   { to: '/reports',     label: 'Relación Semanal',   icon: ClipboardList   },
   { to: '/projects',    label: 'Proyectos',           icon: FolderKanban    },
   { to: '/contractors', label: 'Contratistas',        icon: Users           },
