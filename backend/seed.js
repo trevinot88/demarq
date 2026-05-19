@@ -198,9 +198,50 @@ async function seed() {
   await insOffice(w3, 'MOSQUITEROS',2500);
 
   // Combustible (registros de ejemplo)
-  await insFuel('2026-05-10', 'APORTACION',  10000, 'Aportacion inicial mayo');
-  await insFuel('2026-05-12', 'FACTURA_GAS',  3500, 'Gasolina obra Bocapalma');
-  await insFuel('2026-05-14', 'FACTURA_GAS',  2800, 'Gasolina traslados');
+  await insFuel('2025-07-10', 'FACTURA_GAS', 810.11, 'gas');
+  await insFuel('2025-07-25', 'FACTURA_GAS', 2150.45, 'gas');
+  await insFuel('2025-08-05', 'FACTURA_GAS', 2000.0, 'gas');
+  await insFuel('2025-08-20', 'FACTURA_GAS', 1000.0, 'gas');
+  await insFuel('2025-09-03', 'FACTURA_GAS', 800.0, 'gas');
+  await insFuel('2025-09-15', 'FACTURA_GAS', 710.19, 'gas');
+  await insFuel('2025-09-28', 'FACTURA_GAS', 807.12, 'gas');
+  await insFuel('2025-10-05', 'FACTURA_GAS', 432.67, 'gas');
+  await insFuel('2025-10-15', 'FACTURA_GAS', 458.0, 'gas');
+  await insFuel('2025-10-28', 'FACTURA_GAS', 2140.18, 'gas');
+  await insFuel('2025-11-01', 'FACTURA_GAS', 700.0, 'gas');
+  await insFuel('2025-11-05', 'FACTURA_GAS', 700.0, 'gas');
+  await insFuel('2025-11-08', 'FACTURA_GAS', 1000.0, 'gas');
+  await insFuel('2025-11-12', 'FACTURA_GAS', 2030.0, 'gas nov');
+  await insFuel('2025-11-20', 'FACTURA_GAS', 600.0, 'gas nov');
+  await insFuel('2025-11-28', 'FACTURA_GAS', 2000.0, 'gas nov');
+  await insFuel('2025-12-05', 'FACTURA_GAS', 432.77, 'gas');
+  await insFuel('2025-12-15', 'FACTURA_GAS', 2000.0, 'gas');
+  await insFuel('2025-12-28', 'FACTURA_GAS', 2081.0, 'gas');
+  await insFuel('2026-01-05', 'FACTURA_GAS', 1000.0, 'gas enero');
+  await insFuel('2026-01-12', 'FACTURA_GAS', 1181.0, 'gas enero');
+  await insFuel('2026-01-18', 'FACTURA_GAS', 700.0, 'gas enero');
+  await insFuel('2026-01-25', 'FACTURA_GAS', 2500.0, 'gas enero');
+  await insFuel('2026-01-27', 'FACTURA_GAS', 2150.0, 'gas');
+  await insFuel('2026-01-28', 'FACTURA_GAS', 1000.0, 'gas');
+  await insFuel('2026-01-30', 'FACTURA_GAS', 2000.0, 'gas enero 30');
+  await insFuel('2026-02-03', 'FACTURA_GAS', 1000.0, 'feb');
+  await insFuel('2026-02-07', 'FACTURA_GAS', 461.0, 'gas');
+  await insFuel('2026-02-12', 'FACTURA_GAS', 500.0, 'gas');
+  await insFuel('2026-02-17', 'FACTURA_GAS', 1100.0, 'gas');
+  await insFuel('2026-02-22', 'FACTURA_GAS', 500.0, 'gas');
+  await insFuel('2026-02-27', 'FACTURA_GAS', 1684.0, 'gas');
+  await insFuel('2026-03-05', 'FACTURA_GAS', 2110.0, 'marzo');
+  await insFuel('2026-03-10', 'FACTURA_GAS', 1200.0, 'marzo');
+  await insFuel('2026-03-15', 'FACTURA_GAS', 2116.0, 'gas');
+  await insFuel('2026-03-20', 'FACTURA_GAS', 2150.0, 'gas');
+  await insFuel('2026-03-25', 'FACTURA_GAS', 800.0, 'gas');
+  await insFuel('2026-03-31', 'FACTURA_GAS', 2300.0, 'mar-31');
+  await insFuel('2026-04-17', 'FACTURA_GAS', 5430.0, 'abril 17 varias');
+  await insFuel('2026-04-24', 'FACTURA_GAS', 1895.0, 'abr-24');
+  await insFuel('2026-04-27', 'RETIRO', 10000.0, 'retiro 27 abril');
+  await insFuel('2026-05-08', 'FACTURA_GAS', 2500.0, 'may-08');
+  await insFuel('2026-05-18', 'FACTURA_GAS', 2200.0, 'may-18');
+  await insFuel('2026-05-18', 'APORTACION', 40915.0, 'Total aportaciones (ult. Aport. 18 may)');
 
   // ── REPORTES DE AVANCE ─────────────────────────────────────────────────
   // Pendientes
