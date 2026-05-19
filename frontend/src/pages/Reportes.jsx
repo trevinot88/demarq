@@ -38,6 +38,8 @@ function Section({ title, color, icon: Icon, children, count }) {
 function ReporteCard({ r, weeks, onAction }) {
   const [accepting, setAccepting] = useState(false);
   const [acceptAmt, setAcceptAmt] = useState(r.amount_reported);
+  const [changing, setChanging] = useState(false);
+  const [changeAmt, setChangeAmt] = useState(r.amount_reported);
   const [pasando, setPasando] = useState(false);
   const [weekSel, setWeekSel] = useState('');
 
@@ -46,7 +48,7 @@ function ReporteCard({ r, weeks, onAction }) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-brown truncate">{r.project_name}</p>
-          <p className="text-sm text-olive">{r.contractor_name}</p>
+          <p className="text-sm text-gray-900 font-medium">{r.contractor_name}</p>
           {r.description && (
             <p className="text-xs text-gray-500 mt-1 italic">"{r.description}"</p>
           )}
@@ -64,19 +66,19 @@ function ReporteCard({ r, weeks, onAction }) {
 
         {/* Acciones */}
         <div className="flex flex-col gap-1.5 shrink-0">
-          {r.status === 'pending' && !accepting && (
+          {r.status === 'pending' && !accepting && !changing && (
             <>
               <button
                 onClick={() => { setAccepting(true); setAcceptAmt(r.amount_reported); }}
-                className="btn-sm bg-olive text-white hover:bg-olive-dark"
+                className="btn-sm bg-green-600 text-white hover:bg-green-700"
               >
                 <CheckCircle size={13} /> Aceptar
               </button>
               <button
-                onClick={() => onAction('reject', r.id)}
-                className="btn-sm bg-sand text-brown hover:bg-sand-dark border border-brown/20"
+                onClick={() => { setChanging(true); setChangeAmt(r.amount_reported); }}
+                className="btn-sm bg-amber-500 text-white hover:bg-amber-600"
               >
-                <XCircle size={13} /> Rechazar
+                <XCircle size={13} /> Cambiar monto
               </button>
             </>
           )}
@@ -115,8 +117,8 @@ function ReporteCard({ r, weeks, onAction }) {
 
       {/* Panel aceptar con monto */}
       {accepting && (
-        <div className="mt-3 p-3 bg-olive/10 rounded-lg border border-olive/30 space-y-2">
-          <p className="text-xs font-medium text-olive-dark">Monto a aceptar:</p>
+        <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-300 space-y-2">
+          <p className="text-xs font-medium text-green-800">Monto a aceptar:</p>
           <input
             type="number"
             className="input-base w-full"
@@ -125,7 +127,7 @@ function ReporteCard({ r, weeks, onAction }) {
           />
           <div className="flex gap-2">
             <button
-              className="btn-sm bg-olive text-white hover:bg-olive-dark flex-1"
+              className="btn-sm bg-green-600 text-white hover:bg-green-700 flex-1"
               onClick={() => { onAction('accept', r.id, { amount: acceptAmt }); setAccepting(false); }}
             >
               Confirmar
@@ -133,6 +135,33 @@ function ReporteCard({ r, weeks, onAction }) {
             <button
               className="btn-sm bg-sand text-brown border border-brown/20 flex-1"
               onClick={() => setAccepting(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Panel cambiar monto */}
+      {changing && (
+        <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-300 space-y-2">
+          <p className="text-xs font-medium text-amber-800">Nuevo monto negociado:</p>
+          <input
+            type="number"
+            className="input-base w-full"
+            value={changeAmt}
+            onChange={e => setChangeAmt(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <button
+              className="btn-sm bg-amber-500 text-white hover:bg-amber-600 flex-1"
+              onClick={() => { onAction('accept', r.id, { amount: changeAmt }); setChanging(false); }}
+            >
+              Confirmar
+            </button>
+            <button
+              className="btn-sm bg-sand text-brown border border-brown/20 flex-1"
+              onClick={() => setChanging(false)}
             >
               Cancelar
             </button>
