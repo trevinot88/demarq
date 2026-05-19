@@ -40,8 +40,6 @@ function ReporteCard({ r, weeks, onAction }) {
   const [acceptAmt, setAcceptAmt] = useState(r.amount_reported);
   const [changing, setChanging] = useState(false);
   const [changeAmt, setChangeAmt] = useState(r.amount_reported);
-  const [pasando, setPasando] = useState(false);
-  const [weekSel, setWeekSel] = useState('');
 
   return (
     <div className="bg-white border border-sand rounded-xl p-4 shadow-sm">
@@ -82,10 +80,10 @@ function ReporteCard({ r, weeks, onAction }) {
               </button>
             </>
           )}
-          {r.status === 'accepted' && !pasando && (
+          {r.status === 'accepted' && (
             <>
               <button
-                onClick={() => { setPasando(true); setWeekSel(''); }}
+                onClick={() => onAction('pasar', r.id)}
                 className="btn-sm bg-brown text-white hover:bg-brown/80"
               >
                 <ArrowRight size={13} /> Pasar
@@ -169,37 +167,6 @@ function ReporteCard({ r, weeks, onAction }) {
         </div>
       )}
 
-      {/* Panel pasar a relación semanal */}
-      {pasando && (
-        <div className="mt-3 p-3 bg-brown/10 rounded-lg border border-brown/30 space-y-2">
-          <p className="text-xs font-medium text-brown">Seleccionar semana:</p>
-          <select
-            className="input-base w-full"
-            value={weekSel}
-            onChange={e => setWeekSel(e.target.value)}
-          >
-            <option value="">— Selecciona —</option>
-            {weeks.map(w => (
-              <option key={w.id} value={w.id}>{w.week_date}</option>
-            ))}
-          </select>
-          <div className="flex gap-2">
-            <button
-              disabled={!weekSel}
-              className="btn-sm bg-brown text-white hover:bg-brown/80 flex-1 disabled:opacity-40"
-              onClick={() => { onAction('pasar', r.id, { week_id: weekSel }); setPasando(false); }}
-            >
-              Confirmar
-            </button>
-            <button
-              className="btn-sm bg-sand text-brown border border-brown/20 flex-1"
-              onClick={() => setPasando(false)}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -328,7 +295,17 @@ export default function Reportes() {
         await axios.patch(`${API}/reportes/${id}/reset`);
         toast.success('Revertido a pendiente');
       } else if (action === 'pasar') {
-        await axios.post(`${API}/reportes/${id}/pasar`, { weekly_report_id: payload.week_id });
+        // Buscar o crear semana del viernes más próximo
+        const targetDate = nextFridayISO();
+        let week = weeks.find(w => w.week_date === targetDate);
+        
+        if (!week) {
+          const { data } = await axios.post(`${API}/reports`, { week_date: targetDate });
+          week = { id: data.id, week_date: targetDate };
+          toast.success(`Semana ${targetDate} creada`);
+        }
+        
+        await axios.post(`${API}/reportes/${id}/pasar`, { weekly_report_id: week.id });
         toast.success('Pasado a relación semanal');
       }
       load();
