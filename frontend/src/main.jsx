@@ -4,12 +4,12 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import axios from 'axios';
 import App from './App.jsx';
-
-// Include session cookie in every request automatically
-axios.defaults.withCredentials = true;
 import { RoleProvider } from './context/RoleContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import './index.css';
+
+// Include session cookie in every request automatically
+axios.defaults.withCredentials = true;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
