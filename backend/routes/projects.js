@@ -39,6 +39,12 @@ router.get('/:id', async (req, res) => {
     const { rows: contractors } = await db.query(`
       SELECT cpb.*, c.name AS contractor_name,
         COALESCE(
+          (SELECT SUM(amount)
+           FROM contractor_project_extras cpe
+           WHERE cpe.contractor_id = cpb.contractor_id
+             AND cpe.project_id = cpb.project_id), 0
+        ) AS total_extras,
+        COALESCE(
           (SELECT SUM(re.ent_a_cta + re.rep_a_cta)
            FROM report_entries re
            WHERE re.contractor_id = cpb.contractor_id
@@ -142,6 +148,60 @@ router.delete('/:id/contractors/:cid', async (req, res) => {
     await db.query(
       `DELETE FROM contractor_project_budgets WHERE contractor_id = $1 AND project_id = $2`,
       [req.params.cid, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Extras routes ────────────────────────────────────────────────────────────
+
+// GET /api/projects/:id/contractors/:cid/extras
+router.get('/:id/contractors/:cid/extras', async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT * FROM contractor_project_extras
+      WHERE contractor_id = $1 AND project_id = $2
+      ORDER BY date DESC, id DESC
+    `, [req.params.cid, req.params.id]);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/projects/:id/contractors/:cid/extras
+router.post('/:id/contractors/:cid/extras', async (req, res) => {
+  const { amount, description = '', date = new Date().toISOString().split('T')[0] } = req.body;
+  if (!amount || amount <= 0) return res.status(400).json({ error: 'amount required and must be > 0' });
+  try {
+    const { rows } = await db.query(`
+      INSERT INTO contractor_project_extras (contractor_id, project_id, amount, description, date)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `, [req.params.cid, req.params.id, amount, description.trim(), date]);
+    res.status(201).json({ id: rows[0].id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/projects/:id/contractors/:cid/extras/:eid
+router.put('/:id/contractors/:cid/extras/:eid', async (req, res) => {
+  try {
+    const { amount, description, date } = req.body;
+    await db.query(`
+      UPDATE contractor_project_extras
+         SET amount      = COALESCE($1, amount),
+             description = COALESCE($2, description),
+             date        = COALESCE($3, date)
+       WHERE id = $4 AND contractor_id = $5 AND project_id = $6
+    `, [amount ?? null, description ?? null, date ?? null, req.params.eid, req.params.cid, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/projects/:id/contractors/:cid/extras/:eid
+router.delete('/:id/contractors/:cid/extras/:eid', async (req, res) => {
+  try {
+    await db.query(
+      `DELETE FROM contractor_project_extras WHERE id = $1 AND contractor_id = $2 AND project_id = $3`,
+      [req.params.eid, req.params.cid, req.params.id]
     );
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

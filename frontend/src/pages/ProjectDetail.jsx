@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Plus, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, FileText } from 'lucide-react';
 import Modal from '../components/Modal.jsx';
 import { mxn, saldoClass, formatWeekDate } from '../utils.js';
 
@@ -13,6 +13,7 @@ export default function ProjectDetail() {
   const [allContractors, setAllContractors] = useState([]);
   const [showAssign, setShowAssign] = useState(false);
   const [editBudget, setEditBudget] = useState(null);
+  const [showExtras, setShowExtras] = useState(null); // { contractor_id, contractor_name }
   const [assignForm, setAssignForm] = useState({ contractor_id: '', valor_presupuesto: 0 });
   const [budgetVal, setBudgetVal] = useState(0);
 
@@ -91,11 +92,13 @@ export default function ProjectDetail() {
           <p className="px-4 md:px-5 py-6 text-gray-500 text-sm">No hay contratistas asignados.</p>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px]">
+          <table className="w-full min-w-[700px]">
             <thead>
               <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
                 <th className="px-3 md:px-5 py-3 text-left">Contratista</th>
-                <th className="px-3 md:px-5 py-3 text-right">V.P.</th>
+                <th className="px-3 md:px-5 py-3 text-right">V.P. Base</th>
+                <th className="px-3 md:px-5 py-3 text-right">Extras</th>
+                <th className="px-3 md:px-5 py-3 text-right">V.P. Total</th>
                 <th className="px-3 md:px-5 py-3 text-right">Pagado</th>
                 <th className="px-3 md:px-5 py-3 text-right">Saldo</th>
                 <th className="px-3 md:px-5 py-3 text-right">Acciones</th>
@@ -103,11 +106,27 @@ export default function ProjectDetail() {
             </thead>
             <tbody>
               {contractors.map(c => {
-                const saldo = c.valor_presupuesto - c.total_pagado;
+                const vpBase = c.valor_presupuesto || 0;
+                const extras = c.total_extras || 0;
+                const vpTotal = vpBase + extras;
+                const saldo = vpTotal - c.total_pagado;
                 return (
                   <tr key={c.contractor_id} className="table-row text-sm">
                     <td className="px-3 md:px-5 py-2 md:py-3 text-gray-900 font-medium text-xs md:text-sm">{c.contractor_name}</td>
-                    <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-gray-700 text-xs md:text-sm">{mxn(c.valor_presupuesto)}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-gray-700 text-xs md:text-sm">{mxn(vpBase)}</td>
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-right text-xs md:text-sm">
+                      {extras > 0 ? (
+                        <button
+                          onClick={() => setShowExtras({ contractor_id: c.contractor_id, contractor_name: c.contractor_name })}
+                          className="font-mono text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          +{mxn(extras)}
+                        </button>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-gray-900 font-semibold text-xs md:text-sm">{mxn(vpTotal)}</td>
                     <td className="px-3 md:px-5 py-2 md:py-3 text-right font-mono text-gray-600 text-xs md:text-sm">{mxn(c.total_pagado)}</td>
                     <td className={`px-3 md:px-5 py-2 md:py-3 text-right font-mono font-semibold text-xs md:text-sm ${
                       saldo < 0 ? 'text-red-600' : saldo === 0 ? 'text-gray-400' : 'text-green-600'
@@ -116,6 +135,11 @@ export default function ProjectDetail() {
                     </td>
                     <td className="px-3 md:px-5 py-2 md:py-3 text-right">
                     <div className="flex justify-end gap-2 md:gap-3">
+                      <button
+                        onClick={() => setShowExtras({ contractor_id: c.contractor_id, contractor_name: c.contractor_name })}
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Ver/Agregar extras"
+                      ><FileText size={14} /></button>
                       <button
                         onClick={() => { setEditBudget(c); setBudgetVal(c.valor_presupuesto); }}
                         className="text-gray-400 hover:text-accent transition-colors"
@@ -193,13 +217,15 @@ export default function ProjectDetail() {
 
       {/* Modal: editar VP */}
       {editBudget && (
-        <Modal title={`Editar VP — ${editBudget.contractor_name}`} onClose={() => setEditBudget(null)} size="sm">
+        <Modal title={`Editar VP Base — ${editBudget.contractor_name}`} onClose={() => setEditBudget(null)} size="sm">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-500 mb-1">Nuevo V.P.</label>
+              <label className="block text-sm text-gray-500 mb-1">Nuevo V.P. Base</label>
               <input type="number" className="input-field" value={budgetVal}
                 onChange={e => setBudgetVal(Number(e.target.value))} />
-              <p className="text-xs text-gray-400 mt-1">El cambio aplica desde esta semana en adelante. El historial no se modifica.</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Este es el presupuesto base. Los extras se gestionan por separado.
+              </p>
             </div>
             <div className="flex gap-3 justify-end">
               <button className="btn-secondary" onClick={() => setEditBudget(null)}>Cancelar</button>
@@ -208,8 +234,221 @@ export default function ProjectDetail() {
           </div>
         </Modal>
       )}
+
+      {/* Modal: extras */}
+      {showExtras && (
+        <ExtrasModal
+          projectId={id}
+          contractorId={showExtras.contractor_id}
+          contractorName={showExtras.contractor_name}
+          onClose={() => setShowExtras(null)}
+          onUpdated={load}
+        />
+      )}
     </div>
   );
+}
+
+// ── Modal de Extras ──────────────────────────────────────────────────────────
+function ExtrasModal({ projectId, contractorId, contractorName, onClose, onUpdated }) {
+  const [extras, setExtras] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingExtra, setEditingExtra] = useState(null);
+  const [form, setForm] = useState({
+    amount: '',
+    description: '',
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  const loadExtras = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`/api/projects/${projectId}/contractors/${contractorId}/extras`);
+      setExtras(data);
+    } catch {
+      toast.error('Error al cargar extras');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadExtras(); }, [projectId, contractorId]);
+
+  const handleSave = async () => {
+    if (!form.amount || form.amount <= 0) return toast.error('El monto debe ser mayor a 0');
+    try {
+      if (editingExtra) {
+        await axios.put(`/api/projects/${projectId}/contractors/${contractorId}/extras/${editingExtra.id}`, form);
+        toast.success('Extra actualizado');
+      } else {
+        await axios.post(`/api/projects/${projectId}/contractors/${contractorId}/extras`, form);
+        toast.success('Extra agregado');
+      }
+      setShowForm(false);
+      setEditingExtra(null);
+      setForm({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
+      loadExtras();
+      onUpdated();
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Error al guardar');
+    }
+  };
+
+  const handleEdit = (extra) => {
+    setEditingExtra(extra);
+    setForm({
+      amount: extra.amount,
+      description: extra.description || '',
+      date: extra.date,
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (extraId) => {
+    if (!confirm('¿Eliminar este extra?')) return;
+    try {
+      await axios.delete(`/api/projects/${projectId}/contractors/${contractorId}/extras/${extraId}`);
+      toast.success('Extra eliminado');
+      loadExtras();
+      onUpdated();
+    } catch {
+      toast.error('Error al eliminar');
+    }
+  };
+
+  const totalExtras = extras.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  return (
+    <Modal title={`Extras — ${contractorName}`} onClose={onClose} size="lg">
+      <div className="space-y-4">
+        {/* Lista de extras */}
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+          </div>
+        ) : extras.length === 0 && !showForm ? (
+          <div className="text-center py-8 text-gray-500">
+            <p className="mb-4">No hay extras registrados</p>
+            <button className="btn-primary btn-sm" onClick={() => setShowForm(true)}>
+              <Plus size={14} /> Agregar Extra
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Total extras: <span className="font-mono font-bold text-blue-600">{mxn(totalExtras)}</span>
+              </p>
+              {!showForm && (
+                <button className="btn-primary btn-sm" onClick={() => setShowForm(true)}>
+                  <Plus size={14} /> Agregar
+                </button>
+              )}
+            </div>
+
+            {extras.length > 0 && (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr className="text-xs text-gray-500 uppercase">
+                      <th className="px-3 py-2 text-left">Fecha</th>
+                      <th className="px-3 py-2 text-left">Descripción</th>
+                      <th className="px-3 py-2 text-right">Monto</th>
+                      <th className="px-3 py-2 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {extras.map(extra => (
+                      <tr key={extra.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-gray-600 font-mono text-xs">{extra.date}</td>
+                        <td className="px-3 py-2 text-gray-900">{extra.description || '—'}</td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold text-blue-600">+{mxn(extra.amount)}</td>
+                        <td className="px-3 py-2 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleEdit(extra)}
+                              className="text-gray-400 hover:text-accent"
+                            ><Pencil size={13} /></button>
+                            <button
+                              onClick={() => handleDelete(extra.id)}
+                              className="text-gray-400 hover:text-red-500"
+                            ><Trash2 size={13} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Formulario */}
+        {showForm && (
+          <div className="border border-blue-200 rounded-lg p-4 bg-blue-50/30">
+            <h3 className="font-semibold text-gray-900 mb-3 text-sm">
+              {editingExtra ? 'Editar Extra' : 'Nuevo Extra'}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Monto *</label>
+                <input
+                  type="number"
+                  className="input-field"
+                  value={form.amount}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  placeholder="0"
+                  min="0"
+                  step="any"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Descripción</label>
+                <textarea
+                  className="input-field resize-none"
+                  rows="2"
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Ej: Trabajo adicional en fachada"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Fecha</label>
+                <input
+                  type="date"
+                  className="input-field"
+                  value={form.date}
+                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  className="btn-secondary btn-sm"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingExtra(null);
+                    setForm({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button className="btn-primary btn-sm" onClick={handleSave}>
+                  {editingExtra ? 'Actualizar' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end pt-2">
+          <button className="btn-secondary" onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 }
 
 function Spinner() {

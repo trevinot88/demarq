@@ -90,6 +90,15 @@ async function initSchema() {
       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(contractor_id, project_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS contractor_project_extras (
+      id            SERIAL PRIMARY KEY,
+      contractor_id INTEGER NOT NULL REFERENCES contractors(id) ON DELETE CASCADE,
+      project_id    INTEGER NOT NULL REFERENCES projects(id)    ON DELETE CASCADE,
+      amount        REAL    NOT NULL DEFAULT 0,
+      description   TEXT    NOT NULL DEFAULT '',
+      date          DATE    NOT NULL DEFAULT CURRENT_DATE,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS weekly_reports (
       id         SERIAL PRIMARY KEY,
       week_date  TEXT    NOT NULL UNIQUE,
