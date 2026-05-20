@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardList, FolderKanban,
-  Users, Fuel, HardHat, LogOut, FileCheck, X,
+  Users, Fuel, HardHat, LogOut, FileCheck, X, History,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -12,6 +12,7 @@ const links = [
   { to: '/projects',    label: 'Proyectos',           icon: FolderKanban    },
   { to: '/contractors', label: 'Contratistas',        icon: Users           },
   { to: '/fuel',        label: 'Gasolinas / Caja',    icon: Fuel            },
+  { to: '/cambios',     label: 'Cambios',             icon: History         },
 ];
 
 export default function Sidebar({ mobileOpen, onClose }) {

@@ -10,6 +10,7 @@ import ProjectDetail from './pages/ProjectDetail.jsx';
 import Contractors from './pages/Contractors.jsx';
 import ContractorDetail from './pages/ContractorDetail.jsx';
 import Fuel        from './pages/Fuel.jsx';
+import Cambios     from './pages/Cambios.jsx';
 import Login       from './pages/Login.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import { HardHat, Menu } from 'lucide-react';
@@ -61,6 +62,7 @@ export default function App() {
             <Route path="/contractors"             element={<Contractors />} />
             <Route path="/contractors/:id"         element={<ContractorDetail />} />
             <Route path="/fuel"                    element={<Fuel />} />
+            <Route path="/cambios"                 element={<Cambios />} />
           </Routes>
         </div>
       </main>

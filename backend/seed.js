@@ -5,9 +5,12 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejec
 
 async function initSchema() {
   const s = [
+    `CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin','user')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+    `CREATE TABLE IF NOT EXISTS audit_logs (id SERIAL PRIMARY KEY, username TEXT NOT NULL, action TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id INTEGER, entity_name TEXT, details JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
     `CREATE TABLE IF NOT EXISTS projects (id SERIAL PRIMARY KEY, name TEXT NOT NULL, client_name TEXT, status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','closed')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
     `CREATE TABLE IF NOT EXISTS contractors (id SERIAL PRIMARY KEY, name TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
     `CREATE TABLE IF NOT EXISTS contractor_project_budgets (id SERIAL PRIMARY KEY, contractor_id INTEGER NOT NULL REFERENCES contractors(id) ON DELETE CASCADE, project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE, valor_presupuesto REAL NOT NULL DEFAULT 0, notes TEXT DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(contractor_id, project_id))`,
+    `CREATE TABLE IF NOT EXISTS contractor_project_extras (id SERIAL PRIMARY KEY, contractor_id INTEGER NOT NULL REFERENCES contractors(id) ON DELETE CASCADE, project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE, amount REAL NOT NULL DEFAULT 0, description TEXT NOT NULL DEFAULT '', date DATE NOT NULL DEFAULT CURRENT_DATE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
     `CREATE TABLE IF NOT EXISTS weekly_reports (id SERIAL PRIMARY KEY, week_date TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
     `CREATE TABLE IF NOT EXISTS report_entries (id SERIAL PRIMARY KEY, report_id INTEGER NOT NULL REFERENCES weekly_reports(id) ON DELETE CASCADE, contractor_id INTEGER NOT NULL REFERENCES contractors(id), project_id INTEGER NOT NULL REFERENCES projects(id), vp REAL NOT NULL DEFAULT 0, ent_a_cta REAL NOT NULL DEFAULT 0, rep_a_cta REAL NOT NULL DEFAULT 0, notes TEXT DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(report_id, contractor_id, project_id))`,
     `ALTER TABLE report_entries ADD COLUMN IF NOT EXISTS vp REAL NOT NULL DEFAULT 0`,
@@ -27,9 +30,15 @@ async function seed() {
   await pool.query('DELETE FROM office_payments');
   await pool.query('DELETE FROM report_entries');
   await pool.query('DELETE FROM weekly_reports');
+  await pool.query('DELETE FROM contractor_project_extras');
   await pool.query('DELETE FROM contractor_project_budgets');
   await pool.query('DELETE FROM contractors');
   await pool.query('DELETE FROM projects');
+  await pool.query('DELETE FROM users');
+
+  // ── USUARIOS ───────────────────────────────────────────────────────────
+  await pool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3) ON CONFLICT (username) DO NOTHING`, ['demarq', '2026', 'admin']);
+  await pool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3) ON CONFLICT (username) DO NOTHING`, ['Asistente', 'demarq2026', 'user']);
 
   // Helpers
   async function insProject(name, client, status = 'active') {

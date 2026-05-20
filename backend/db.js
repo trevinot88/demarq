@@ -69,6 +69,23 @@ const db = {
 
 async function initSchema() {
   const statements = [
+    `CREATE TABLE IF NOT EXISTS users (
+      id         SERIAL PRIMARY KEY,
+      username   TEXT    NOT NULL UNIQUE,
+      password   TEXT    NOT NULL,
+      role       TEXT    NOT NULL DEFAULT 'user' CHECK(role IN ('admin','user')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS audit_logs (
+      id          SERIAL PRIMARY KEY,
+      username    TEXT    NOT NULL,
+      action      TEXT    NOT NULL,
+      entity_type TEXT    NOT NULL,
+      entity_id   INTEGER,
+      entity_name TEXT,
+      details     JSONB,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS projects (
       id          SERIAL PRIMARY KEY,
       name        TEXT    NOT NULL,

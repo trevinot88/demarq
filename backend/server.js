@@ -7,6 +7,7 @@ const path    = require('path');
 const crypto  = require('crypto');
 
 require('./db'); // initialise schema on startup
+const { auditMiddleware } = require('./middleware/auditLogger');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -36,6 +37,9 @@ app.use(session({
   },
 }));
 
+// ── Audit middleware ──────────────────────────────────────────────────────────
+app.use(auditMiddleware);
+
 // ── Auth middleware ────────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (req.session.authenticated) return next();
@@ -50,6 +54,7 @@ app.use('/api/contractors', requireAuth, require('./routes/contractors'));
 app.use('/api/reportes',    requireAuth, require('./routes/reportes'));
 app.use('/api/reports',     requireAuth, require('./routes/reports'));
 app.use('/api/fuel',        requireAuth, require('./routes/fuel'));
+app.use('/api/audit',       requireAuth, require('./routes/audit'));
 
 // ── Frontend (production) ─────────────────────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

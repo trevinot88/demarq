@@ -30,11 +30,21 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'project_id, contractor_id y amount_reported son requeridos' });
   }
   try {
+    const names = await db.query(`
+      SELECT p.name AS project_name, c.name AS contractor_name
+      FROM projects p, contractors c
+      WHERE p.id = $1 AND c.id = $2
+    `, [project_id, contractor_id]);
     const { rows } = await db.query(`
       INSERT INTO advancement_reports (project_id, contractor_id, amount_reported, description, report_date)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `, [project_id, contractor_id, amount_reported, description || '', report_date || new Date().toISOString().slice(0, 10)]);
+    if (names.rows[0]) {
+      await req.logAudit('CREATE', 'advancement_report', rows[0].id,
+        `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
+        { amount_reported, description, report_date });
+    }
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -50,6 +60,13 @@ router.patch('/:id/accept', async (req, res) => {
     return res.status(400).json({ error: 'amount_accepted es requerido' });
   }
   try {
+    const before = await db.query(`
+      SELECT ar.*, p.name AS project_name, c.name AS contractor_name
+      FROM advancement_reports ar
+      JOIN projects p ON p.id = ar.project_id
+      JOIN contractors c ON c.id = ar.contractor_id
+      WHERE ar.id = $1
+    `, [req.params.id]);
     const { rows } = await db.query(`
       UPDATE advancement_reports
          SET status = 'accepted',
@@ -59,6 +76,11 @@ router.patch('/:id/accept', async (req, res) => {
       RETURNING *
     `, [amount_accepted, req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'No encontrado' });
+    if (before.rows[0]) {
+      await req.logAudit('ACCEPT', 'advancement_report', req.params.id,
+        `${before.rows[0].contractor_name} → ${before.rows[0].project_name}`,
+        { amount_reported: before.rows[0].amount_reported, amount_accepted });
+    }
     res.json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -69,6 +91,13 @@ router.patch('/:id/accept', async (req, res) => {
 // ── PATCH /api/reportes/:id/reject ───────────────────────────────────────────
 router.patch('/:id/reject', async (req, res) => {
   try {
+    const before = await db.query(`
+      SELECT ar.*, p.name AS project_name, c.name AS contractor_name
+      FROM advancement_reports ar
+      JOIN projects p ON p.id = ar.project_id
+      JOIN contractors c ON c.id = ar.contractor_id
+      WHERE ar.id = $1
+    `, [req.params.id]);
     const { rows } = await db.query(`
       UPDATE advancement_reports
          SET status = 'rejected'
@@ -76,6 +105,11 @@ router.patch('/:id/reject', async (req, res) => {
       RETURNING *
     `, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'No encontrado' });
+    if (before.rows[0]) {
+      await req.logAudit('REJECT', 'advancement_report', req.params.id,
+        `${before.rows[0].contractor_name} → ${before.rows[0].project_name}`,
+        { amount_reported: before.rows[0].amount_reported });
+    }
     res.json(rows[0]);
   } catch (err) {
     console.error(err);
@@ -111,9 +145,14 @@ router.post('/:id/pasar', async (req, res) => {
   }
   try {
     // Obtener el reporte
-    const { rows: arRows } = await db.query(
-      `SELECT * FROM advancement_reports WHERE id = $1`, [req.params.id]
-    );
+    const { rows: arRows } = await db.query(`
+      SELECT ar.*, p.name AS project_name, c.name AS contractor_name, wr.week_date
+      FROM advancement_reports ar
+      JOIN projects p ON p.id = ar.project_id
+      JOIN contractors c ON c.id = ar.contractor_id
+      JOIN weekly_reports wr ON wr.id = $2
+      WHERE ar.id = $1
+    `, [req.params.id, weekly_report_id]);
     if (!arRows.length) return res.status(404).json({ error: 'No encontrado' });
     const ar = arRows[0];
     if (ar.status !== 'accepted') {
@@ -138,6 +177,10 @@ router.post('/:id/pasar', async (req, res) => {
        WHERE id = $2
       RETURNING *
     `, [weekly_report_id, req.params.id]);
+
+    await req.logAudit('PASS_TO_WEEK', 'advancement_report', req.params.id,
+      `${ar.contractor_name} → ${ar.project_name}`,
+      { week_date: ar.week_date, amount });
 
     res.json(rows[0]);
   } catch (err) {

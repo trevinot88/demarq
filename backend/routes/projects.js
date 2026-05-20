@@ -22,10 +22,12 @@ router.post('/', async (req, res) => {
   try {
     const { name, client_name, status = 'active' } = req.body;
     if (!name) return res.status(400).json({ error: 'name is required' });
+    const projectName = name.trim().toUpperCase();
     const { rows } = await db.query(
       `INSERT INTO projects (name, client_name, status) VALUES ($1, $2, $3) RETURNING id`,
-      [name.trim().toUpperCase(), client_name || null, status]
+      [projectName, client_name || null, status]
     );
+    await req.logAudit('CREATE', 'project', rows[0].id, projectName, { client_name, status });
     res.status(201).json({ id: rows[0].id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -76,8 +78,12 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { name, client_name, status } = req.body;
-    const project = (await db.query(`SELECT id FROM projects WHERE id = $1`, [req.params.id])).rows[0];
+    const project = (await db.query(`SELECT name FROM projects WHERE id = $1`, [req.params.id])).rows[0];
     if (!project) return res.status(404).json({ error: 'Project not found' });
+    const updates = {};
+    if (name) updates.name = name.trim().toUpperCase();
+    if (client_name !== undefined) updates.client_name = client_name;
+    if (status) updates.status = status;
     await db.query(
       `UPDATE projects SET name = COALESCE($1, name),
                            client_name = COALESCE($2, client_name),
@@ -85,6 +91,7 @@ router.put('/:id', async (req, res) => {
        WHERE id = $4`,
       [name ? name.trim().toUpperCase() : null, client_name ?? null, status ?? null, req.params.id]
     );
+    await req.logAudit('UPDATE', 'project', req.params.id, project.name, updates);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -92,7 +99,9 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/projects/:id
 router.delete('/:id', async (req, res) => {
   try {
+    const project = (await db.query(`SELECT name FROM projects WHERE id = $1`, [req.params.id])).rows[0];
     await db.query(`DELETE FROM projects WHERE id = $1`, [req.params.id]);
+    if (project) await req.logAudit('DELETE', 'project', req.params.id, project.name);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -116,6 +125,11 @@ router.post('/:id/contractors', async (req, res) => {
   const { contractor_id, valor_presupuesto = 0, notes = '' } = req.body;
   if (!contractor_id) return res.status(400).json({ error: 'contractor_id required' });
   try {
+    const names = await db.query(`
+      SELECT p.name AS project_name, c.name AS contractor_name
+      FROM projects p, contractors c
+      WHERE p.id = $1 AND c.id = $2
+    `, [req.params.id, contractor_id]);
     const { rows } = await db.query(`
       INSERT INTO contractor_project_budgets (contractor_id, project_id, valor_presupuesto, notes)
       VALUES ($1, $2, $3, $4)
@@ -124,6 +138,11 @@ router.post('/:id/contractors', async (req, res) => {
             notes             = EXCLUDED.notes
       RETURNING id
     `, [contractor_id, req.params.id, valor_presupuesto, notes]);
+    if (names.rows[0]) {
+      await req.logAudit('ASSIGN', 'contractor_project', rows[0].id, 
+        `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
+        { valor_presupuesto, notes });
+    }
     res.status(201).json({ id: rows[0].id });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -132,12 +151,22 @@ router.post('/:id/contractors', async (req, res) => {
 router.put('/:id/contractors/:cid', async (req, res) => {
   try {
     const { valor_presupuesto, notes } = req.body;
+    const names = await db.query(`
+      SELECT p.name AS project_name, c.name AS contractor_name
+      FROM projects p, contractors c
+      WHERE p.id = $1 AND c.id = $2
+    `, [req.params.id, req.params.cid]);
     await db.query(`
       UPDATE contractor_project_budgets
          SET valor_presupuesto = COALESCE($1, valor_presupuesto),
              notes             = COALESCE($2, notes)
        WHERE contractor_id = $3 AND project_id = $4
     `, [valor_presupuesto ?? null, notes ?? null, req.params.cid, req.params.id]);
+    if (names.rows[0]) {
+      await req.logAudit('UPDATE_VP', 'contractor_project', null,
+        `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
+        { valor_presupuesto, notes });
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -172,11 +201,21 @@ router.post('/:id/contractors/:cid/extras', async (req, res) => {
   const { amount, description = '', date = new Date().toISOString().split('T')[0] } = req.body;
   if (!amount || amount <= 0) return res.status(400).json({ error: 'amount required and must be > 0' });
   try {
+    const names = await db.query(`
+      SELECT p.name AS project_name, c.name AS contractor_name
+      FROM projects p, contractors c
+      WHERE p.id = $1 AND c.id = $2
+    `, [req.params.id, req.params.cid]);
     const { rows } = await db.query(`
       INSERT INTO contractor_project_extras (contractor_id, project_id, amount, description, date)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id
     `, [req.params.cid, req.params.id, amount, description.trim(), date]);
+    if (names.rows[0]) {
+      await req.logAudit('ADD_EXTRA', 'extra', rows[0].id,
+        `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
+        { amount, description, date });
+    }
     res.status(201).json({ id: rows[0].id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -185,6 +224,11 @@ router.post('/:id/contractors/:cid/extras', async (req, res) => {
 router.put('/:id/contractors/:cid/extras/:eid', async (req, res) => {
   try {
     const { amount, description, date } = req.body;
+    const names = await db.query(`
+      SELECT p.name AS project_name, c.name AS contractor_name
+      FROM projects p, contractors c
+      WHERE p.id = $1 AND c.id = $2
+    `, [req.params.id, req.params.cid]);
     await db.query(`
       UPDATE contractor_project_extras
          SET amount      = COALESCE($1, amount),
@@ -192,6 +236,11 @@ router.put('/:id/contractors/:cid/extras/:eid', async (req, res) => {
              date        = COALESCE($3, date)
        WHERE id = $4 AND contractor_id = $5 AND project_id = $6
     `, [amount ?? null, description ?? null, date ?? null, req.params.eid, req.params.cid, req.params.id]);
+    if (names.rows[0]) {
+      await req.logAudit('UPDATE_EXTRA', 'extra', req.params.eid,
+        `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
+        { amount, description, date });
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -199,10 +248,20 @@ router.put('/:id/contractors/:cid/extras/:eid', async (req, res) => {
 // DELETE /api/projects/:id/contractors/:cid/extras/:eid
 router.delete('/:id/contractors/:cid/extras/:eid', async (req, res) => {
   try {
+    const names = await db.query(`
+      SELECT p.name AS project_name, c.name AS contractor_name, cpe.amount, cpe.description
+      FROM projects p, contractors c, contractor_project_extras cpe
+      WHERE p.id = $1 AND c.id = $2 AND cpe.id = $3
+    `, [req.params.id, req.params.cid, req.params.eid]);
     await db.query(
       `DELETE FROM contractor_project_extras WHERE id = $1 AND contractor_id = $2 AND project_id = $3`,
       [req.params.eid, req.params.cid, req.params.id]
     );
+    if (names.rows[0]) {
+      await req.logAudit('DELETE_EXTRA', 'extra', req.params.eid,
+        `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
+        { amount: names.rows[0].amount, description: names.rows[0].description });
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
