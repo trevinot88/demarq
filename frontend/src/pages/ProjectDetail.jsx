@@ -449,7 +449,6 @@ function ExtrasModal({ projectId, contractorId, contractorName, onClose, onUpdat
     </Modal>
   );
 }
-}
 
 function Spinner() {
   return (
