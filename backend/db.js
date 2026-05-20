@@ -168,6 +168,18 @@ async function initSchema() {
   for (const sql of statements) {
     await pool.query(sql);
   }
+
+  // Insertar usuarios por defecto si no existen
+  await pool.query(`
+    INSERT INTO users (username, password, role)
+    VALUES ('demarq', '2026', 'admin')
+    ON CONFLICT (username) DO NOTHING
+  `);
+  await pool.query(`
+    INSERT INTO users (username, password, role)
+    VALUES ('Asistente', 'demarq2026', 'user')
+    ON CONFLICT (username) DO NOTHING
+  `);
 }
 
 // ── Schema initialization with retry ────────────────────────────────────────
