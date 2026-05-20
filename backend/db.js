@@ -124,8 +124,8 @@ async function initSchema() {
     `CREATE TABLE IF NOT EXISTS report_entries (
       id            SERIAL PRIMARY KEY,
       report_id     INTEGER NOT NULL REFERENCES weekly_reports(id) ON DELETE CASCADE,
-      contractor_id INTEGER NOT NULL REFERENCES contractors(id),
-      project_id    INTEGER NOT NULL REFERENCES projects(id),
+      contractor_id INTEGER NOT NULL REFERENCES contractors(id) ON DELETE CASCADE,
+      project_id    INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       ent_a_cta     REAL    NOT NULL DEFAULT 0,
       rep_a_cta     REAL    NOT NULL DEFAULT 0,
       notes         TEXT    DEFAULT '',
@@ -149,6 +149,26 @@ async function initSchema() {
     )`,
     // vp = valor pendiente (saldo al inicio de la semana)
     `ALTER TABLE report_entries ADD COLUMN IF NOT EXISTS vp REAL NOT NULL DEFAULT 0`,
+    // Migrar restricciones de report_entries a ON DELETE CASCADE
+    `DO $$ 
+     BEGIN
+       -- Drop old constraints if they exist without CASCADE
+       IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'report_entries_contractor_id_fkey') THEN
+         ALTER TABLE report_entries DROP CONSTRAINT report_entries_contractor_id_fkey;
+       END IF;
+       IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'report_entries_project_id_fkey') THEN
+         ALTER TABLE report_entries DROP CONSTRAINT report_entries_project_id_fkey;
+       END IF;
+       -- Add new constraints with CASCADE
+       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'report_entries_contractor_id_fkey_cascade') THEN
+         ALTER TABLE report_entries ADD CONSTRAINT report_entries_contractor_id_fkey_cascade 
+           FOREIGN KEY (contractor_id) REFERENCES contractors(id) ON DELETE CASCADE;
+       END IF;
+       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'report_entries_project_id_fkey_cascade') THEN
+         ALTER TABLE report_entries ADD CONSTRAINT report_entries_project_id_fkey_cascade 
+           FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
+       END IF;
+     END $$`,
     `CREATE TABLE IF NOT EXISTS advancement_reports (
       id               SERIAL PRIMARY KEY,
       project_id       INTEGER NOT NULL REFERENCES projects(id)     ON DELETE CASCADE,
