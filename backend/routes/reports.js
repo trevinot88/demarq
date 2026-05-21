@@ -121,7 +121,19 @@ router.post('/', async (req, res) => {
 
     for (const { contractor_id, project_id } of pairs) {
       let ent_a_cta = 0;
-      if (prev) {
+      
+      // Primero verificar si hay un valor manual configurado en el proyecto
+      const manualValue = (await client.query(
+        `SELECT total_pagado_manual FROM contractor_project_budgets
+         WHERE contractor_id = $1 AND project_id = $2`,
+        [contractor_id, project_id]
+      )).rows[0];
+      
+      if (manualValue && manualValue.total_pagado_manual != null) {
+        // Usar el valor manual si existe
+        ent_a_cta = manualValue.total_pagado_manual;
+      } else if (prev) {
+        // Si no hay manual, usar la suma de la semana anterior
         const prevEntry = (await client.query(
           `SELECT ent_a_cta, rep_a_cta FROM report_entries
            WHERE report_id = $1 AND contractor_id = $2 AND project_id = $3`,
@@ -129,6 +141,7 @@ router.post('/', async (req, res) => {
         )).rows[0];
         if (prevEntry) ent_a_cta = prevEntry.ent_a_cta + prevEntry.rep_a_cta;
       }
+      
       await client.query(`
         INSERT INTO report_entries (report_id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes)
         VALUES ($1, $2, $3, $4, 0, '')
