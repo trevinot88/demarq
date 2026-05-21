@@ -16,6 +16,7 @@ export default function ProjectDetail() {
   const [showExtras, setShowExtras] = useState(null); // { contractor_id, contractor_name }
   const [assignForm, setAssignForm] = useState({ contractor_id: '', valor_presupuesto: 0 });
   const [budgetVal, setBudgetVal] = useState(0);
+  const [pagadoVal, setPagadoVal] = useState(0);
 
   const load = () => {
     setLoading(true);
@@ -42,8 +43,11 @@ export default function ProjectDetail() {
 
   const handleUpdateVP = async () => {
     try {
-      await axios.put(`/api/projects/${id}/contractors/${editBudget.contractor_id}`, { valor_presupuesto: budgetVal });
-      toast.success('VP actualizado');
+      await axios.put(`/api/projects/${id}/contractors/${editBudget.contractor_id}`, { 
+        valor_presupuesto: budgetVal,
+        total_pagado_manual: pagadoVal
+      });
+      toast.success('Valores actualizados');
       setEditBudget(null);
       load();
     } catch { toast.error('Error al actualizar'); }
@@ -141,7 +145,11 @@ export default function ProjectDetail() {
                         title="Ver/Agregar extras"
                       ><FileText size={14} /></button>
                       <button
-                        onClick={() => { setEditBudget(c); setBudgetVal(c.valor_presupuesto); }}
+                        onClick={() => { 
+                          setEditBudget(c); 
+                          setBudgetVal(c.valor_presupuesto); 
+                          setPagadoVal(c.total_pagado || 0);
+                        }}
                         className="text-gray-400 hover:text-accent transition-colors"
                       ><Pencil size={14} /></button>
                       <button
@@ -217,14 +225,22 @@ export default function ProjectDetail() {
 
       {/* Modal: editar VP */}
       {editBudget && (
-        <Modal title={`Editar VP Base — ${editBudget.contractor_name}`} onClose={() => setEditBudget(null)} size="sm">
+        <Modal title={`Editar — ${editBudget.contractor_name}`} onClose={() => setEditBudget(null)} size="sm">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-500 mb-1">Nuevo V.P. Base</label>
+              <label className="block text-sm text-gray-500 mb-1">V.P. Base</label>
               <input type="number" className="input-field" value={budgetVal}
                 onChange={e => setBudgetVal(Number(e.target.value))} />
               <p className="text-xs text-gray-400 mt-1">
                 Este es el presupuesto base. Los extras se gestionan por separado.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Total Pagado</label>
+              <input type="number" className="input-field" value={pagadoVal}
+                onChange={e => setPagadoVal(Number(e.target.value))} />
+              <p className="text-xs text-gray-400 mt-1">
+                Monto total que se ha pagado a este contratista en este proyecto.
               </p>
             </div>
             <div className="flex gap-3 justify-end">

@@ -47,11 +47,12 @@ router.get('/:id', async (req, res) => {
              AND cpe.project_id = cpb.project_id), 0
         ) AS total_extras,
         COALESCE(
+          cpb.total_pagado_manual,
           (SELECT SUM(re.ent_a_cta + re.rep_a_cta)
            FROM report_entries re
            WHERE re.contractor_id = cpb.contractor_id
-             AND re.project_id = cpb.project_id), 0
-        ) AS total_pagado
+             AND re.project_id = cpb.project_id)
+        , 0) AS total_pagado
       FROM contractor_project_budgets cpb
       JOIN contractors c ON c.id = cpb.contractor_id
       WHERE cpb.project_id = $1
@@ -150,7 +151,7 @@ router.post('/:id/contractors', async (req, res) => {
 // PUT /api/projects/:id/contractors/:cid
 router.put('/:id/contractors/:cid', async (req, res) => {
   try {
-    const { valor_presupuesto, notes } = req.body;
+    const { valor_presupuesto, notes, total_pagado_manual } = req.body;
     const names = await db.query(`
       SELECT p.name AS project_name, c.name AS contractor_name
       FROM projects p, contractors c
@@ -159,13 +160,14 @@ router.put('/:id/contractors/:cid', async (req, res) => {
     await db.query(`
       UPDATE contractor_project_budgets
          SET valor_presupuesto = COALESCE($1, valor_presupuesto),
-             notes             = COALESCE($2, notes)
-       WHERE contractor_id = $3 AND project_id = $4
-    `, [valor_presupuesto ?? null, notes ?? null, req.params.cid, req.params.id]);
+             notes             = COALESCE($2, notes),
+             total_pagado_manual = $3
+       WHERE contractor_id = $4 AND project_id = $5
+    `, [valor_presupuesto ?? null, notes ?? null, total_pagado_manual ?? null, req.params.cid, req.params.id]);
     if (names.rows[0]) {
       await req.logAudit('UPDATE_VP', 'contractor_project', null,
         `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
-        { valor_presupuesto, notes });
+        { valor_presupuesto, notes, total_pagado_manual });
     }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
