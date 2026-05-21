@@ -163,11 +163,10 @@ router.post('/:id/pasar', async (req, res) => {
     // Upsert en report_entries
     await db.query(`
       INSERT INTO report_entries (report_id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, 0, $4, $5)
       ON CONFLICT (report_id, contractor_id, project_id)
-      DO UPDATE SET rep_a_cta = report_entries.rep_a_cta + EXCLUDED.rep_a_cta,
-                    ent_a_cta = report_entries.ent_a_cta + EXCLUDED.ent_a_cta
-    `, [weekly_report_id, ar.contractor_id, ar.project_id, amount, amount,
+      DO UPDATE SET rep_a_cta = report_entries.rep_a_cta + EXCLUDED.rep_a_cta
+    `, [weekly_report_id, ar.contractor_id, ar.project_id, amount,
         `Reporte #${ar.id} — ${ar.description || ''}`]);
 
     // Marcar como pasado
