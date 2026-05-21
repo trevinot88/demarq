@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Plus, Trash2, Pencil, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil } from 'lucide-react';
 import Modal from '../components/Modal.jsx';
 import { mxn, saldoClass, formatWeekDate } from '../utils.js';
 
@@ -143,7 +143,7 @@ export default function ProjectDetail() {
                         onClick={() => setShowExtras({ contractor_id: c.contractor_id, contractor_name: c.contractor_name })}
                         className="text-gray-400 hover:text-blue-600 transition-colors"
                         title="Ver/Agregar extras"
-                      ><FileText size={14} /></button>
+                      ><Plus size={14} /></button>
                       <button
                         onClick={() => { 
                           setEditBudget(c); 

@@ -14,6 +14,16 @@ const fmtDate = (d) => {
   return `${day}/${m}/${y}`;
 };
 
+// Obtener la fecha del próximo viernes en formato ISO (YYYY-MM-DD)
+const nextFridayISO = () => {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = domingo, 5 = viernes
+  const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7; // Si hoy es viernes, toma el próximo
+  const nextFriday = new Date(today);
+  nextFriday.setDate(today.getDate() + daysUntilFriday);
+  return nextFriday.toISOString().slice(0, 10);
+};
+
 // ── Sección colapsable ──────────────────────────────────────────────────────
 function Section({ title, color, icon: Icon, children, count }) {
   const [open, setOpen] = useState(true);
