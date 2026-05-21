@@ -20,7 +20,7 @@ export default function Dashboard() {
   if (!data) return null;
 
   const {
-    current_week, current_week_total, total_pagado_global,
+    current_week, current_week_total, disponible_gasolinas,
     active_projects, active_contractors, current_week_summary, negative_alerts,
   } = data;
 
@@ -45,8 +45,8 @@ export default function Dashboard() {
           color="accent"
         />
         <StatCard
-          title="Total pagado global"
-          value={mxn(total_pagado_global)}
+          title="Disponible gasolinas"
+          value={mxn(disponible_gasolinas)}
           icon={TrendingUp}
           color="green"
         />

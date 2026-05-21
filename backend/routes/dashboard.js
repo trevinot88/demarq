@@ -59,9 +59,15 @@ router.get('/', async (req, res) => {
         }));
     }
 
-    const globalPaid = (await db.query(
-      `SELECT COALESCE(SUM(rep_a_cta), 0) AS total FROM report_entries`
-    )).rows[0];
+    // Calcular saldo disponible de gasolinas
+    const fuelBalance = (await db.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN type = 'APORTACION' THEN amount ELSE 0 END), 0) AS aportaciones,
+        COALESCE(SUM(CASE WHEN type = 'RETIRO' THEN amount ELSE 0 END), 0) AS retiros,
+        COALESCE(SUM(CASE WHEN type = 'FACTURA_GAS' THEN amount ELSE 0 END), 0) AS facturas
+      FROM fuel_transactions
+    `)).rows[0];
+    const disponibleGasolinas = Number(fuelBalance.aportaciones) - Number(fuelBalance.retiros) - Number(fuelBalance.facturas);
 
     const activeProjects = (await db.query(
       `SELECT COUNT(*)::int AS cnt FROM projects WHERE status = 'active'`
@@ -74,7 +80,7 @@ router.get('/', async (req, res) => {
     res.json({
       current_week:         latestWeek,
       current_week_total:   currentWeekTotal,
-      total_pagado_global:  Number(globalPaid.total),
+      disponible_gasolinas: disponibleGasolinas,
       active_projects:      activeProjects.cnt,
       active_contractors:   activeContractors.cnt,
       current_week_summary: currentWeekSummary,
