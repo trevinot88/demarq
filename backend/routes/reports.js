@@ -180,6 +180,20 @@ router.delete('/:id', async (req, res) => {
 router.put('/:id/entries/:entryId', async (req, res) => {
   try {
     const { ent_a_cta, rep_a_cta, notes } = req.body;
+    
+    // Obtener los datos de la entrada actual
+    const { rows: entryData } = await db.query(`
+      SELECT contractor_id, project_id FROM report_entries
+      WHERE id = $1 AND report_id = $2
+    `, [req.params.entryId, req.params.id]);
+    
+    if (!entryData.length) {
+      return res.status(404).json({ error: 'Entrada no encontrada' });
+    }
+    
+    const { contractor_id, project_id } = entryData[0];
+    
+    // Actualizar la entrada de la relación semanal
     await db.query(`
       UPDATE report_entries
          SET ent_a_cta = COALESCE($1, ent_a_cta),
@@ -187,6 +201,16 @@ router.put('/:id/entries/:entryId', async (req, res) => {
              notes     = COALESCE($3, notes)
        WHERE id = $4 AND report_id = $5
     `, [ent_a_cta ?? null, rep_a_cta ?? null, notes ?? null, req.params.entryId, req.params.id]);
+    
+    // Si se editó ent_a_cta, actualizar el total_pagado_manual en el proyecto
+    if (ent_a_cta !== undefined && ent_a_cta !== null) {
+      await db.query(`
+        UPDATE contractor_project_budgets
+        SET total_pagado_manual = $1
+        WHERE contractor_id = $2 AND project_id = $3
+      `, [ent_a_cta, contractor_id, project_id]);
+    }
+    
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
