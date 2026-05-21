@@ -97,7 +97,7 @@ function ReporteCard({ r, weeks, onAction }) {
               </button>
             </>
           )}
-          {r.status === 'accepted' && (
+          {r.status === 'accepted' && !r.weekly_report_id && (
             <>
               <button
                 onClick={() => onAction('pasar', r.id)}
@@ -114,6 +114,14 @@ function ReporteCard({ r, weeks, onAction }) {
                 Revertir
               </button>
             </>
+          )}
+          {r.status === 'accepted' && r.weekly_report_id && (
+            <button
+              onClick={() => onAction('reset', r.id)}
+              className="btn-sm bg-sand text-brown hover:bg-sand-dark border border-brown/20 text-xs"
+            >
+              Revertir
+            </button>
           )}
           {r.status === 'rejected' && (
             <button

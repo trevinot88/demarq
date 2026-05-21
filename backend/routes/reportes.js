@@ -158,6 +158,9 @@ router.post('/:id/pasar', async (req, res) => {
     if (ar.status !== 'accepted') {
       return res.status(400).json({ error: 'Solo se pueden pasar reportes aceptados' });
     }
+    if (ar.weekly_report_id) {
+      return res.status(400).json({ error: 'Este reporte ya fue pasado a una relación semanal' });
+    }
     const amount = ar.amount_accepted ?? ar.amount_reported;
 
     // Upsert en report_entries
