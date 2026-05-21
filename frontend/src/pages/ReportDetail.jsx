@@ -203,9 +203,13 @@ export default function ReportDetail() {
 
   const handleDelete = async () => {
     if (!confirm('¿Eliminar esta semana completa? Esta acción no se puede deshacer.')) return;
-    await axios.delete(`/api/reports/${id}`);
-    toast.success('Semana eliminada');
-    navigate('/reports');
+    try {
+      await axios.delete(`/api/reports/${id}`);
+      toast.success('Semana eliminada');
+      navigate('/reports');
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Error al eliminar');
+    }
   };
 
   if (loading) return <Spinner />;
