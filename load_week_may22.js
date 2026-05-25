@@ -21,6 +21,8 @@ const WEEK_DATE = '2026-05-22';
 
 // Proyectos nuevos a crear si no existen
 const NEW_PROJECTS = [
+  { name: 'TERRENO',                  client_name: 'Fernando Marroquin', status: 'active' },
+  { name: 'BOCAPALMA',                client_name: 'Fernando Marroquin', status: 'active' },
   { name: 'BOCAPALMA BARANDAL RAMPA', client_name: 'Fernando Marroquin', status: 'active' },
   { name: 'VIA SISTINA',              client_name: null,                  status: 'active' },
 ];
@@ -189,6 +191,7 @@ async function load() {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('✗ Error — se hizo ROLLBACK:', err.message);
+    console.error('Stack:', err.stack);
     throw err;
   } finally {
     client.release();
@@ -196,4 +199,7 @@ async function load() {
   }
 }
 
-load().catch(() => process.exit(1));
+load().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});
