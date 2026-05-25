@@ -104,7 +104,7 @@ function OfficeRow({ payment, reportId, onUpdated, onDelete }) {
         <EditCell value={payment.person_name} onSave={v => save('person_name', v)} className="text-gray-900 font-medium" />
       </td>
       <td className="px-4 py-2.5 text-right font-mono">
-        <EditCell value={payment.amount} isCurrency onSave={v => save('amount', v)} className="text-green-400 font-semibold" />
+        <EditCell value={payment.amount} isCurrency onSave={v => save('amount', v)} className="text-green-700 font-semibold" />
       </td>
       <td className="px-2 md:px-4 py-2.5">
         <button onClick={() => onDelete(payment.id)} className="text-gray-600 hover:text-red-400 transition-colors">
