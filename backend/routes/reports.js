@@ -4,6 +4,49 @@ const db = require('../db');
 const ExcelJS = require('exceljs');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+/**
+ * Actualiza el status de proyectos basado en la última semana.
+ * Proyectos en la última semana → 'active'
+ * Proyectos NO en la última semana → 'closed'
+ */
+async function updateProjectStatus(client = null) {
+  const conn = client || db.pool;
+  try {
+    // Obtener la última semana
+    const { rows: [latestWeek] } = await conn.query(`
+      SELECT id FROM weekly_reports ORDER BY week_date DESC LIMIT 1
+    `);
+
+    if (!latestWeek) return; // No hay semanas, no hacer nada
+
+    // Activar proyectos que están en la última semana
+    await conn.query(`
+      UPDATE projects 
+      SET status = 'active' 
+      WHERE id IN (
+        SELECT DISTINCT project_id 
+        FROM report_entries 
+        WHERE report_id = $1
+      )
+      AND status != 'active'
+    `, [latestWeek.id]);
+
+    // Cerrar proyectos que NO están en la última semana
+    await conn.query(`
+      UPDATE projects 
+      SET status = 'closed' 
+      WHERE status = 'active' 
+        AND id NOT IN (
+          SELECT DISTINCT project_id 
+          FROM report_entries 
+          WHERE report_id = $1
+        )
+    `, [latestWeek.id]);
+  } catch (err) {
+    console.error('Error updating project status:', err.message);
+  }
+}
+
 async function getReportDetail(id) {
   const report = (await db.query(`SELECT * FROM weekly_reports WHERE id = $1`, [id])).rows[0];
   if (!report) return null;
@@ -150,6 +193,7 @@ router.post('/', async (req, res) => {
     }
 
     await client.query('COMMIT');
+    await updateProjectStatus(); // Actualizar status de proyectos
     res.status(201).json({ id: reportId, week_date });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -172,6 +216,7 @@ router.get('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     await db.query(`DELETE FROM weekly_reports WHERE id = $1`, [req.params.id]);
+    await updateProjectStatus(); // Actualizar status de proyectos
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -232,6 +277,7 @@ router.post('/:id/entries', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
     `, [req.params.id, contractor_id, project_id, vp || 0, ent_a_cta, rep_a_cta, notes]);
+    await updateProjectStatus(); // Actualizar status de proyectos
     res.status(201).json({ id: rows[0].id });
   } catch (e) {
     res.status(409).json({ error: 'Entrada ya existe para ese contratista/proyecto' });
@@ -245,6 +291,7 @@ router.delete('/:id/entries/:entryId', async (req, res) => {
       `DELETE FROM report_entries WHERE id = $1 AND report_id = $2`,
       [req.params.entryId, req.params.id]
     );
+    await updateProjectStatus(); // Actualizar status de proyectos
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
