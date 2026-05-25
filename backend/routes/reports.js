@@ -14,6 +14,11 @@ async function getReportDetail(id) {
            c.name  AS contractor_name,
            p.name  AS project_name,
            COALESCE(NULLIF(re.vp, 0), cpb.valor_presupuesto, 0) AS vp
+    FROM report_entries re
+    JOIN contractors c ON c.id = re.contractor_id
+    JOIN projects    p ON p.id = re.project_id
+    LEFT JOIN contractor_project_budgets cpb
+           ON cpb.contractor_id = re.contractor_id
           AND cpb.project_id   = re.project_id
     WHERE re.report_id = $1
     ORDER BY p.name, c.name
