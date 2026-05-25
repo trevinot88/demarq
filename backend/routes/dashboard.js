@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
     if (latestWeek) {
       const { rows: entries } = await db.query(`
         SELECT re.*, c.name AS contractor_name, p.name AS project_name,
-               cpb.valor_presupuesto AS vp
+               COALESCE(NULLIF(re.vp, 0), cpb.valor_presupuesto, 0) AS vp
         FROM report_entries re
         JOIN contractors c  ON c.id  = re.contractor_id
         JOIN projects p     ON p.id  = re.project_id

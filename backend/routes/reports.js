@@ -13,12 +13,7 @@ async function getReportDetail(id) {
            re.ent_a_cta, re.rep_a_cta, re.notes,
            c.name  AS contractor_name,
            p.name  AS project_name,
-           COALESCE(cpb.valor_presupuesto, 0) AS vp
-    FROM report_entries re
-    JOIN contractors c ON c.id = re.contractor_id
-    JOIN projects    p ON p.id = re.project_id
-    LEFT JOIN contractor_project_budgets cpb
-           ON cpb.contractor_id = re.contractor_id
+           COALESCE(NULLIF(re.vp, 0), cpb.valor_presupuesto, 0) AS vp
           AND cpb.project_id   = re.project_id
     WHERE re.report_id = $1
     ORDER BY p.name, c.name
@@ -113,13 +108,13 @@ router.post('/', async (req, res) => {
     )).rows[0];
 
     const { rows: pairs } = await client.query(`
-      SELECT cpb.contractor_id, cpb.project_id
+      SELECT cpb.contractor_id, cpb.project_id, cpb.valor_presupuesto
       FROM contractor_project_budgets cpb
       JOIN projects p ON p.id = cpb.project_id
       WHERE p.status = 'active'
     `);
 
-    for (const { contractor_id, project_id } of pairs) {
+    for (const { contractor_id, project_id, valor_presupuesto } of pairs) {
       let ent_a_cta = 0;
       
       // Primero verificar si hay un valor manual configurado en el proyecto
@@ -143,10 +138,10 @@ router.post('/', async (req, res) => {
       }
       
       await client.query(`
-        INSERT INTO report_entries (report_id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes)
-        VALUES ($1, $2, $3, $4, 0, '')
+        INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
+        VALUES ($1, $2, $3, $4, $5, 0, '')
         ON CONFLICT (report_id, contractor_id, project_id) DO NOTHING
-      `, [reportId, contractor_id, project_id, ent_a_cta]);
+      `, [reportId, contractor_id, project_id, valor_presupuesto || 0, ent_a_cta]);
     }
 
     await client.query('COMMIT');
@@ -228,10 +223,10 @@ router.post('/:id/entries', async (req, res) => {
       `, [contractor_id, project_id, vp]);
     }
     const { rows } = await db.query(`
-      INSERT INTO report_entries (report_id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
-    `, [req.params.id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes]);
+    `, [req.params.id, contractor_id, project_id, vp || 0, ent_a_cta, rep_a_cta, notes]);
     res.status(201).json({ id: rows[0].id });
   } catch (e) {
     res.status(409).json({ error: 'Entrada ya existe para ese contratista/proyecto' });
