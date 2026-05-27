@@ -88,10 +88,20 @@ async function getReportDetail(id) {
   const summaryMap = new Map();
   for (const e of enriched) {
     if (!summaryMap.has(e.contractor_id)) {
-      summaryMap.set(e.contractor_id, { contractor_id: e.contractor_id, contractor_name: e.contractor_name, total_rep_a_cta: 0 });
+      summaryMap.set(e.contractor_id, { contractor_id: e.contractor_id, contractor_name: e.contractor_name, total_rep_a_cta: 0, is_office: false });
     }
     summaryMap.get(e.contractor_id).total_rep_a_cta += e.rep_a_cta;
   }
+  
+  // Agregar pagos de oficina al resumen
+  for (const op of officePayments) {
+    const key = `office_${op.person_name}`;
+    if (!summaryMap.has(key)) {
+      summaryMap.set(key, { contractor_id: null, contractor_name: op.person_name, total_rep_a_cta: 0, is_office: true });
+    }
+    summaryMap.get(key).total_rep_a_cta += op.amount;
+  }
+  
   const summary = [...summaryMap.values()]
     .filter(s => s.total_rep_a_cta > 0)
     .sort((a, b) => b.total_rep_a_cta - a.total_rep_a_cta);
@@ -293,6 +303,25 @@ router.delete('/:id/entries/:entryId', async (req, res) => {
     );
     await updateProjectStatus(); // Actualizar status de proyectos
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/reports/history/:contractorId/:projectId ─────────────────────────
+router.get('/history/:contractorId/:projectId', async (req, res) => {
+  try {
+    const { contractorId, projectId } = req.params;
+    const { rows } = await db.query(`
+      SELECT 
+        wr.week_date,
+        re.rep_a_cta,
+        re.notes
+      FROM report_entries re
+      JOIN weekly_reports wr ON wr.id = re.report_id
+      WHERE re.contractor_id = $1 AND re.project_id = $2
+        AND re.rep_a_cta > 0
+      ORDER BY wr.week_date ASC
+    `, [contractorId, projectId]);
+    res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

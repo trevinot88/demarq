@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Download, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Download, Plus, Trash2, ChevronDown, ChevronUp, History } from 'lucide-react';
 import Modal from '../components/Modal.jsx';
-import { mxn, saldoClass, formatWeekDate } from '../utils.js';
+import { mxn, saldoClass, formatWeekDate, fmtDate } from '../utils.js';
 
 // ── Inline editable cell ──────────────────────────────────────────────────────
 function EditCell({ value, onSave, className = '', isCurrency = false, readOnly = false }) {
@@ -44,7 +44,7 @@ function EditCell({ value, onSave, className = '', isCurrency = false, readOnly 
 }
 
 // ── Fila de entry ─────────────────────────────────────────────────────────────
-function EntryRow({ entry, reportId, onUpdated, onDelete }) {
+function EntryRow({ entry, reportId, onUpdated, onDelete, onShowHistory }) {
   const vp          = entry.vp || 0;
   const saldo       = vp - entry.ent_a_cta;
   const saldo_final = saldo - entry.rep_a_cta;
@@ -63,7 +63,18 @@ function EntryRow({ entry, reportId, onUpdated, onDelete }) {
       <td className="px-2 md:px-4 py-2.5 text-gray-600 text-xs md:text-sm">{entry.contractor_name}</td>
           <td className="px-2 md:px-4 py-2.5 text-right font-mono text-brown/60 text-xs md:text-sm">{mxn(vp)}</td>
       <td className="px-2 md:px-4 py-2.5 text-right font-mono text-xs md:text-sm">
-        <EditCell value={entry.ent_a_cta} isCurrency onSave={v => save('ent_a_cta', v)} />
+        <div className="flex items-center justify-end gap-1">
+          <EditCell value={entry.ent_a_cta} isCurrency onSave={v => save('ent_a_cta', v)} />
+          {entry.ent_a_cta > 0 && (
+            <button
+              onClick={() => onShowHistory(entry)}
+              className="text-olive/60 hover:text-olive transition-colors"
+              title="Ver historial de pagos"
+            >
+              <History size={14} />
+            </button>
+          )}
+        </div>
       </td>
       <td className={`px-2 md:px-4 py-2.5 text-right font-mono font-semibold text-xs md:text-sm ${saldoClass(saldo)}`}>
         {mxn(saldo)}
@@ -127,6 +138,12 @@ export default function ReportDetail() {
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [showAddOffice, setShowAddOffice] = useState(false);
   const [exporting, setExporting] = useState(false);
+  
+  // Modal de historial
+  const [showHistory, setShowHistory]     = useState(false);
+  const [historyData, setHistoryData]     = useState([]);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Formulario agregar entry
   const [contractors, setContractors] = useState([]);
@@ -160,6 +177,20 @@ export default function ReportDetail() {
     await axios.delete(`/api/reports/${id}/office/${payId}`);
     toast.success('Pago eliminado');
     load();
+  };
+  
+  const handleShowHistory = async (entry) => {
+    setSelectedEntry(entry);
+    setShowHistory(true);
+    setLoadingHistory(true);
+    try {
+      const res = await axios.get(`/api/reports/history/${entry.contractor_id}/${entry.project_id}`);
+      setHistoryData(res.data);
+    } catch (e) {
+      toast.error('Error al cargar historial');
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const handleAddEntry = async () => {
@@ -284,6 +315,7 @@ export default function ReportDetail() {
                       reportId={id}
                       onUpdated={load}
                       onDelete={handleDeleteEntry}
+                      onShowHistory={handleShowHistory}
                     />
                   ))}
                 </tbody>
@@ -364,9 +396,12 @@ export default function ReportDetail() {
             </thead>
             <tbody>
               {summary.map((s, i) => (
-                <tr key={s.contractor_id} className="table-row text-sm">
+                <tr key={s.contractor_id || `office_${i}`} className="table-row text-sm">
                   <td className="px-3 md:px-5 py-2.5 text-brown/50 text-xs md:text-sm">{i + 1}</td>
-                  <td className="px-3 md:px-5 py-2.5 font-medium text-brown text-xs md:text-sm">{s.contractor_name}</td>
+                  <td className="px-3 md:px-5 py-2.5 font-medium text-brown text-xs md:text-sm">
+                    {s.contractor_name}
+                    {s.is_office && <span className="ml-2 text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">Oficina</span>}
+                  </td>
                   <td className="px-3 md:px-5 py-2.5 text-right font-mono text-green-700 font-semibold text-xs md:text-sm">{mxn(s.total_rep_a_cta)}</td>
                 </tr>
               ))}
@@ -451,6 +486,51 @@ export default function ReportDetail() {
             <div className="flex gap-3 justify-end">
               <button className="btn-secondary" onClick={() => setShowAddOffice(false)}>Cancelar</button>
               <button className="btn-primary" onClick={handleAddOffice}>Agregar</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: historial de pagos */}
+      {showHistory && selectedEntry && (
+        <Modal 
+          title={`Historial de Pagos — ${selectedEntry.contractor_name}`} 
+          onClose={() => setShowHistory(false)}
+          size="md"
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-brown/60">
+              Proyecto: <span className="font-semibold text-brown">{selectedEntry.project_name}</span>
+            </p>
+            <p className="text-sm text-brown/60">
+              Total pagado: <span className="font-mono font-bold text-green-700 text-base">{mxn(selectedEntry.ent_a_cta)}</span>
+            </p>
+            
+            <div className="border-t border-sand-light pt-3">
+              <h4 className="text-xs font-semibold text-brown/50 uppercase mb-2">Desglose por semana</h4>
+              {loadingHistory ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-8 h-8 border-2 border-olive/30 border-t-olive rounded-full animate-spin" />
+                </div>
+              ) : historyData.length === 0 ? (
+                <p className="text-center text-brown/40 text-sm py-4">Sin pagos registrados</p>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {historyData.map((h, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 px-3 bg-sand-lightest/60 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-brown">{formatWeekDate(h.week_date)}</p>
+                        {h.notes && <p className="text-xs text-brown/50 mt-0.5">{h.notes}</p>}
+                      </div>
+                      <span className="font-mono text-sm font-semibold text-green-700">{mxn(h.rep_a_cta)}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-sand pt-2 flex justify-between items-center px-3">
+                    <span className="text-sm font-bold text-brown">TOTAL</span>
+                    <span className="font-mono font-bold text-olive-dark">{mxn(historyData.reduce((sum, h) => sum + h.rep_a_cta, 0))}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </Modal>
