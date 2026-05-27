@@ -14,7 +14,7 @@ router.get('/summary', async (req, res) => {
       total_gas:        map.FACTURA_GAS,
       total_aportacion: map.APORTACION,
       total_retiro:     map.RETIRO,
-      disponible:       map.APORTACION - map.RETIRO - map.FACTURA_GAS,
+      disponible:       map.APORTACION + map.FACTURA_GAS - map.RETIRO,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

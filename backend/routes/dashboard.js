@@ -67,7 +67,7 @@ router.get('/', async (req, res) => {
         COALESCE(SUM(CASE WHEN type = 'FACTURA_GAS' THEN amount ELSE 0 END), 0) AS facturas
       FROM fuel_transactions
     `)).rows[0];
-    const disponibleGasolinas = Number(fuelBalance.aportaciones) - Number(fuelBalance.retiros) - Number(fuelBalance.facturas);
+    const disponibleGasolinas = Number(fuelBalance.aportaciones) + Number(fuelBalance.facturas) - Number(fuelBalance.retiros);
 
     const activeProjects = (await db.query(
       `SELECT COUNT(*)::int AS cnt FROM projects WHERE status = 'active'`

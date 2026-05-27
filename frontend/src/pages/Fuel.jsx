@@ -79,7 +79,7 @@ export default function FuelPage() {
     load();
   };
 
-  const disponible = summary ? summary.total_aportacion - summary.total_retiro - summary.total_gas : 0;
+  const disponible = summary ? summary.total_aportacion + summary.total_gas - summary.total_retiro : 0;
 
   return (
     <div className="space-y-4 md:space-y-6">
