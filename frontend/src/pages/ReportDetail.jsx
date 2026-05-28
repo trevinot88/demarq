@@ -44,7 +44,7 @@ function EditCell({ value, onSave, className = '', isCurrency = false, readOnly 
 }
 
 // ── Fila de entry ─────────────────────────────────────────────────────────────
-function EntryRow({ entry, reportId, onUpdated, onDelete, onShowHistory }) {
+function EntryRow({ entry, reportId, onUpdated, onDelete, onShowHistory, onShowVPHistory }) {
   const vp          = entry.vp || 0;
   const saldo       = vp - entry.ent_a_cta;
   const saldo_final = saldo - entry.rep_a_cta;
@@ -62,7 +62,16 @@ function EntryRow({ entry, reportId, onUpdated, onDelete, onShowHistory }) {
     <tr className="table-row text-sm">
       <td className="px-2 md:px-4 py-2.5 text-gray-600 text-xs md:text-sm">{entry.contractor_name}</td>
       <td className="px-2 md:px-4 py-2.5 text-right font-mono text-xs md:text-sm">
-        <EditCell value={vp} isCurrency onSave={v => save('vp', v)} className="text-brown/60" />
+        <div className="flex items-center justify-end gap-1">
+          <EditCell value={vp} isCurrency onSave={v => save('vp', v)} className="text-brown/60" />
+          <button
+            onClick={() => onShowVPHistory(entry)}
+            className="text-olive/60 hover:text-olive transition-colors"
+            title="Ver historial de VP"
+          >
+            <History size={14} />
+          </button>
+        </div>
       </td>
       <td className="px-2 md:px-4 py-2.5 text-right font-mono text-xs md:text-sm">
         <div className="flex items-center justify-end gap-1">
@@ -146,6 +155,7 @@ export default function ReportDetail() {
   const [historyData, setHistoryData]     = useState([]);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyType, setHistoryType]     = useState('payments'); // 'payments' o 'vp'
 
   // Formulario agregar entry
   const [contractors, setContractors] = useState([]);
@@ -184,9 +194,25 @@ export default function ReportDetail() {
   const handleShowHistory = async (entry) => {
     setSelectedEntry(entry);
     setShowHistory(true);
+    setHistoryType('payments');
     setLoadingHistory(true);
     try {
       const res = await axios.get(`/api/reports/history/${entry.contractor_id}/${entry.project_id}`);
+      setHistoryData(res.data);
+    } catch (e) {
+      toast.error('Error al cargar historial');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleShowVPHistory = async (entry) => {
+    setSelectedEntry(entry);
+    setShowHistory(true);
+    setHistoryType('vp');
+    setLoadingHistory(true);
+    try {
+      const res = await axios.get(`/api/reports/vp-history/${entry.contractor_id}/${entry.project_id}`);
       setHistoryData(res.data);
     } catch (e) {
       toast.error('Error al cargar historial');
@@ -318,6 +344,7 @@ export default function ReportDetail() {
                       onUpdated={load}
                       onDelete={handleDeleteEntry}
                       onShowHistory={handleShowHistory}
+                      onShowVPHistory={handleShowVPHistory}
                     />
                   ))}
                 </tbody>
@@ -493,10 +520,13 @@ export default function ReportDetail() {
         </Modal>
       )}
 
-      {/* Modal: historial de pagos */}
+      {/* Modal: historial de pagos o VP */}
       {showHistory && selectedEntry && (
         <Modal 
-          title={`Historial de Pagos — ${selectedEntry.contractor_name}`} 
+          title={historyType === 'payments' 
+            ? `Historial de Pagos — ${selectedEntry.contractor_name}`
+            : `Historial de V.P. — ${selectedEntry.contractor_name}`
+          } 
           onClose={() => setShowHistory(false)}
           size="md"
         >
@@ -504,9 +534,16 @@ export default function ReportDetail() {
             <p className="text-sm text-brown/60">
               Proyecto: <span className="font-semibold text-brown">{selectedEntry.project_name}</span>
             </p>
-            <p className="text-sm text-brown/60">
-              Total pagado: <span className="font-mono font-bold text-green-700 text-base">{mxn(selectedEntry.ent_a_cta)}</span>
-            </p>
+            {historyType === 'payments' && (
+              <p className="text-sm text-brown/60">
+                Total pagado: <span className="font-mono font-bold text-green-700 text-base">{mxn(selectedEntry.ent_a_cta)}</span>
+              </p>
+            )}
+            {historyType === 'vp' && (
+              <p className="text-sm text-brown/60">
+                V.P. actual: <span className="font-mono font-bold text-brown text-base">{mxn(selectedEntry.vp)}</span>
+              </p>
+            )}
             
             <div className="border-t border-sand-light pt-3">
               <h4 className="text-xs font-semibold text-brown/50 uppercase mb-2">Desglose por semana</h4>
@@ -515,22 +552,50 @@ export default function ReportDetail() {
                   <div className="w-8 h-8 border-2 border-olive/30 border-t-olive rounded-full animate-spin" />
                 </div>
               ) : historyData.length === 0 ? (
-                <p className="text-center text-brown/40 text-sm py-4">Sin pagos registrados</p>
+                <p className="text-center text-brown/40 text-sm py-4">
+                  {historyType === 'payments' ? 'Sin pagos registrados' : 'Sin historial de V.P.'}
+                </p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {historyData.map((h, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 px-3 bg-sand-lightest/60 rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-brown">{formatWeekDate(h.week_date)}</p>
-                        {h.notes && <p className="text-xs text-brown/50 mt-0.5">{h.notes}</p>}
+                  {historyType === 'payments' ? (
+                    historyData.map((h, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 px-3 bg-sand-lightest/60 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium text-brown">{formatWeekDate(h.week_date)}</p>
+                          {h.notes && <p className="text-xs text-brown/50 mt-0.5">{h.notes}</p>}
+                        </div>
+                        <span className="font-mono text-sm font-semibold text-green-700">{mxn(h.rep_a_cta)}</span>
                       </div>
-                      <span className="font-mono text-sm font-semibold text-green-700">{mxn(h.rep_a_cta)}</span>
+                    ))
+                  ) : (
+                    historyData.map((h, i) => {
+                      const prevVP = i > 0 ? historyData[i - 1].vp : 0;
+                      const change = h.vp - prevVP;
+                      const hasChange = i > 0 && change !== 0;
+                      
+                      return (
+                        <div key={i} className="flex items-center justify-between py-2 px-3 bg-sand-lightest/60 rounded-lg">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-brown">{formatWeekDate(h.week_date)}</p>
+                            {hasChange && (
+                              <p className={`text-xs mt-0.5 ${
+                                change > 0 ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {change > 0 ? '+' : ''}{mxn(change)}
+                              </p>
+                            )}
+                          </div>
+                          <span className="font-mono text-sm font-semibold text-brown">{mxn(h.vp)}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                  {historyType === 'payments' && (
+                    <div className="border-t border-sand pt-2 flex justify-between items-center px-3">
+                      <span className="text-sm font-bold text-brown">TOTAL</span>
+                      <span className="font-mono font-bold text-olive-dark">{mxn(historyData.reduce((sum, h) => sum + h.rep_a_cta, 0))}</span>
                     </div>
-                  ))}
-                  <div className="border-t border-sand pt-2 flex justify-between items-center px-3">
-                    <span className="text-sm font-bold text-brown">TOTAL</span>
-                    <span className="font-mono font-bold text-olive-dark">{mxn(historyData.reduce((sum, h) => sum + h.rep_a_cta, 0))}</span>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

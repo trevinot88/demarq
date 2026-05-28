@@ -360,6 +360,23 @@ router.get('/history/:contractorId/:projectId', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/reports/vp-history/:contractorId/:projectId ──────────────────────
+router.get('/vp-history/:contractorId/:projectId', async (req, res) => {
+  try {
+    const { contractorId, projectId } = req.params;
+    const { rows } = await db.query(`
+      SELECT 
+        wr.week_date,
+        re.vp
+      FROM report_entries re
+      JOIN weekly_reports wr ON wr.id = re.report_id
+      WHERE re.contractor_id = $1 AND re.project_id = $2
+      ORDER BY wr.week_date ASC
+    `, [contractorId, projectId]);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POST /api/reports/:id/office ──────────────────────────────────────────────
 router.post('/:id/office', async (req, res) => {
   try {
