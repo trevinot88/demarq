@@ -228,7 +228,14 @@ router.delete('/:id', async (req, res) => {
   try {
     await client.query('BEGIN');
     
-    // Eliminar entries primero (FK constraint)
+    // Desvincular advancement_reports primero (FK constraint)
+    await client.query(`
+      UPDATE advancement_reports 
+      SET weekly_report_id = NULL 
+      WHERE weekly_report_id = $1
+    `, [req.params.id]);
+    
+    // Eliminar entries (FK constraint)
     await client.query(`DELETE FROM report_entries WHERE report_id = $1`, [req.params.id]);
     
     // Eliminar office payments (FK constraint)
