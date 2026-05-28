@@ -224,17 +224,34 @@ router.get('/:id', async (req, res) => {
 
 // ── DELETE /api/reports/:id ───────────────────────────────────────────────────
 router.delete('/:id', async (req, res) => {
+  const client = await db.pool.connect();
   try {
-    await db.query(`DELETE FROM weekly_reports WHERE id = $1`, [req.params.id]);
+    await client.query('BEGIN');
+    
+    // Eliminar entries primero (FK constraint)
+    await client.query(`DELETE FROM report_entries WHERE report_id = $1`, [req.params.id]);
+    
+    // Eliminar office payments (FK constraint)
+    await client.query(`DELETE FROM office_payments WHERE report_id = $1`, [req.params.id]);
+    
+    // Ahora sí eliminar el weekly report
+    await client.query(`DELETE FROM weekly_reports WHERE id = $1`, [req.params.id]);
+    
+    await client.query('COMMIT');
     await updateProjectStatus(); // Actualizar status de proyectos
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
 });
 
 // ── PUT /api/reports/:id/entries/:entryId ────────────────────────────────────
 router.put('/:id/entries/:entryId', async (req, res) => {
   try {
-    const { ent_a_cta, rep_a_cta, notes } = req.body;
+    const { ent_a_cta, rep_a_cta, notes, vp } = req.body;
     
     // Obtener los datos de la entrada actual
     const { rows: entryData } = await db.query(`
@@ -253,9 +270,10 @@ router.put('/:id/entries/:entryId', async (req, res) => {
       UPDATE report_entries
          SET ent_a_cta = COALESCE($1, ent_a_cta),
              rep_a_cta = COALESCE($2, rep_a_cta),
-             notes     = COALESCE($3, notes)
-       WHERE id = $4 AND report_id = $5
-    `, [ent_a_cta ?? null, rep_a_cta ?? null, notes ?? null, req.params.entryId, req.params.id]);
+             notes     = COALESCE($3, notes),
+             vp        = COALESCE($4, vp)
+       WHERE id = $5 AND report_id = $6
+    `, [ent_a_cta ?? null, rep_a_cta ?? null, notes ?? null, vp ?? null, req.params.entryId, req.params.id]);
     
     // Si se editó ent_a_cta, actualizar el total_pagado_manual en el proyecto
     if (ent_a_cta !== undefined && ent_a_cta !== null) {
@@ -264,6 +282,16 @@ router.put('/:id/entries/:entryId', async (req, res) => {
         SET total_pagado_manual = $1
         WHERE contractor_id = $2 AND project_id = $3
       `, [ent_a_cta, contractor_id, project_id]);
+    }
+    
+    // Si se editó VP, actualizar el valor_presupuesto en el proyecto
+    if (vp !== undefined && vp !== null) {
+      await db.query(`
+        INSERT INTO contractor_project_budgets (contractor_id, project_id, valor_presupuesto)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (contractor_id, project_id) 
+        DO UPDATE SET valor_presupuesto = EXCLUDED.valor_presupuesto
+      `, [contractor_id, project_id, vp]);
     }
     
     res.json({ ok: true });

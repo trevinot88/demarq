@@ -61,7 +61,9 @@ function EntryRow({ entry, reportId, onUpdated, onDelete, onShowHistory }) {
   return (
     <tr className="table-row text-sm">
       <td className="px-2 md:px-4 py-2.5 text-gray-600 text-xs md:text-sm">{entry.contractor_name}</td>
-          <td className="px-2 md:px-4 py-2.5 text-right font-mono text-brown/60 text-xs md:text-sm">{mxn(vp)}</td>
+      <td className="px-2 md:px-4 py-2.5 text-right font-mono text-xs md:text-sm">
+        <EditCell value={vp} isCurrency onSave={v => save('vp', v)} className="text-brown/60" />
+      </td>
       <td className="px-2 md:px-4 py-2.5 text-right font-mono text-xs md:text-sm">
         <div className="flex items-center justify-end gap-1">
           <EditCell value={entry.ent_a_cta} isCurrency onSave={v => save('ent_a_cta', v)} />
