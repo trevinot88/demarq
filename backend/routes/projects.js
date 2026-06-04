@@ -1,6 +1,7 @@
 'use strict';
 const router = require('express').Router();
 const db = require('../db');
+const { updateVPForExtras } = require('./reports');
 
 // GET /api/projects
 router.get('/', async (req, res) => {
@@ -166,6 +167,12 @@ router.put('/:id/contractors/:cid', async (req, res) => {
              total_pagado_manual = $3
        WHERE contractor_id = $4 AND project_id = $5
     `, [valor_presupuesto ?? null, notes ?? null, total_pagado_manual ?? null, req.params.cid, req.params.id]);
+    
+    // Si se actualizó el valor_presupuesto, actualizar VP en relaciones semanales
+    if (valor_presupuesto !== undefined && valor_presupuesto !== null) {
+      await updateVPForExtras(req.params.cid, req.params.id);
+    }
+    
     if (names.rows[0]) {
       await req.logAudit('UPDATE_VP', 'contractor_project', null,
         `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
@@ -215,6 +222,10 @@ router.post('/:id/contractors/:cid/extras', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id
     `, [req.params.cid, req.params.id, amount, description.trim(), date]);
+    
+    // Actualizar VP en todas las relaciones semanales
+    await updateVPForExtras(req.params.cid, req.params.id);
+    
     if (names.rows[0]) {
       await req.logAudit('ADD_EXTRA', 'extra', rows[0].id,
         `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
@@ -240,6 +251,10 @@ router.put('/:id/contractors/:cid/extras/:eid', async (req, res) => {
              date        = COALESCE($3, date)
        WHERE id = $4 AND contractor_id = $5 AND project_id = $6
     `, [amount ?? null, description ?? null, date ?? null, req.params.eid, req.params.cid, req.params.id]);
+    
+    // Actualizar VP en todas las relaciones semanales
+    await updateVPForExtras(req.params.cid, req.params.id);
+    
     if (names.rows[0]) {
       await req.logAudit('UPDATE_EXTRA', 'extra', req.params.eid,
         `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
@@ -261,6 +276,10 @@ router.delete('/:id/contractors/:cid/extras/:eid', async (req, res) => {
       `DELETE FROM contractor_project_extras WHERE id = $1 AND contractor_id = $2 AND project_id = $3`,
       [req.params.eid, req.params.cid, req.params.id]
     );
+    
+    // Actualizar VP en todas las relaciones semanales
+    await updateVPForExtras(req.params.cid, req.params.id);
+    
     if (names.rows[0]) {
       await req.logAudit('DELETE_EXTRA', 'extra', req.params.eid,
         `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,

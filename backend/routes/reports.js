@@ -5,6 +5,36 @@ const ExcelJS = require('exceljs');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 /**
+ * Actualiza el VP en todas las relaciones semanales para un contratista/proyecto
+ * cuando se modifican los extras.
+ */
+async function updateVPForExtras(contractorId, projectId, client = null) {
+  const conn = client || db.pool;
+  try {
+    // Calcular VP total (base + extras)
+    const { rows: [vpData] } = await conn.query(`
+      SELECT cpb.valor_presupuesto + COALESCE(
+        (SELECT SUM(amount) FROM contractor_project_extras cpe
+         WHERE cpe.contractor_id = $1 AND cpe.project_id = $2), 0
+      ) AS total_vp
+      FROM contractor_project_budgets cpb
+      WHERE cpb.contractor_id = $1 AND cpb.project_id = $2
+    `, [contractorId, projectId]);
+
+    if (!vpData) return;
+
+    // Actualizar VP en todas las entries de este contratista/proyecto
+    await conn.query(`
+      UPDATE report_entries
+      SET vp = $1
+      WHERE contractor_id = $2 AND project_id = $3
+    `, [vpData.total_vp, contractorId, projectId]);
+  } catch (err) {
+    console.error('Error updating VP for extras:', err.message);
+  }
+}
+
+/**
  * Actualiza el status de proyectos basado en la última semana.
  * Proyectos en la última semana → 'active'
  * Proyectos NO en la última semana → 'closed'
@@ -56,7 +86,14 @@ async function getReportDetail(id) {
            re.ent_a_cta, re.rep_a_cta, re.notes,
            c.name  AS contractor_name,
            p.name  AS project_name,
-           COALESCE(NULLIF(re.vp, 0), cpb.valor_presupuesto, 0) AS vp
+           COALESCE(
+             NULLIF(re.vp, 0), 
+             cpb.valor_presupuesto + COALESCE(
+               (SELECT SUM(amount) FROM contractor_project_extras cpe 
+                WHERE cpe.contractor_id = re.contractor_id 
+                  AND cpe.project_id = re.project_id), 0
+             ), 0
+           ) AS vp
     FROM report_entries re
     JOIN contractors c ON c.id = re.contractor_id
     JOIN projects    p ON p.id = re.project_id
@@ -166,7 +203,12 @@ router.post('/', async (req, res) => {
     )).rows[0];
 
     const { rows: pairs } = await client.query(`
-      SELECT cpb.contractor_id, cpb.project_id, cpb.valor_presupuesto
+      SELECT cpb.contractor_id, cpb.project_id, 
+             cpb.valor_presupuesto + COALESCE(
+               (SELECT SUM(amount) FROM contractor_project_extras cpe 
+                WHERE cpe.contractor_id = cpb.contractor_id 
+                  AND cpe.project_id = cpb.project_id), 0
+             ) AS valor_presupuesto
       FROM contractor_project_budgets cpb
       JOIN projects p ON p.id = cpb.project_id
       WHERE p.status = 'active'
@@ -538,3 +580,4 @@ router.get('/:id/export', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.updateVPForExtras = updateVPForExtras;
