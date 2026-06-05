@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Plus, CheckCircle, XCircle, ArrowRight, Trash2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Trash2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 
 const API = '/api';
 
@@ -49,11 +49,6 @@ function Section({ title, color, icon: Icon, children, count }) {
 
 // ── Tarjeta de reporte ──────────────────────────────────────────────────────
 function ReporteCard({ r, weeks, onAction }) {
-  const [accepting, setAccepting] = useState(false);
-  const [acceptAmt, setAcceptAmt] = useState(r.amount_reported);
-  const [changing, setChanging] = useState(false);
-  const [changeAmt, setChangeAmt] = useState(r.amount_reported);
-
   return (
     <div className="bg-white border border-sand rounded-xl p-3 md:p-4 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -77,10 +72,10 @@ function ReporteCard({ r, weeks, onAction }) {
 
         {/* Acciones */}
         <div className="flex md:flex-col gap-1.5 justify-end">
-          {r.status === 'pending' && !accepting && !changing && (
+          {r.status === 'pending' && (
             <>
               <button
-                onClick={() => { setAccepting(true); setAcceptAmt(r.amount_reported); }}
+                onClick={() => onAction('accept', r)}
                 className="btn-sm bg-green-600 text-white hover:bg-green-700 text-xs"
               >
                 <CheckCircle size={12} className="md:hidden" />
@@ -88,32 +83,22 @@ function ReporteCard({ r, weeks, onAction }) {
                 <span className="hidden sm:inline">Aceptar</span>
               </button>
               <button
-                onClick={() => { setChanging(true); setChangeAmt(r.amount_reported); }}
-                className="btn-sm bg-amber-500 text-white hover:bg-amber-600 text-xs"
+                onClick={() => onAction('reject', r.id)}
+                className="btn-sm bg-red-500 text-white hover:bg-red-600 text-xs"
               >
                 <XCircle size={12} className="md:hidden" />
                 <XCircle size={13} className="hidden md:block" />
-                <span className="hidden sm:inline">Cambiar monto</span>
+                <span className="hidden sm:inline">Rechazar</span>
               </button>
             </>
           )}
           {r.status === 'accepted' && !r.weekly_report_id && (
-            <>
-              <button
-                onClick={() => onAction('pasar', r.id)}
-                className="btn-sm bg-brown text-white hover:bg-brown/80 text-xs"
-              >
-                <ArrowRight size={12} className="md:hidden" />
-                <ArrowRight size={13} className="hidden md:block" />
-                <span className="hidden sm:inline">Pasar</span>
-              </button>
-              <button
-                onClick={() => onAction('reset', r.id)}
-                className="btn-sm bg-sand text-brown hover:bg-sand-dark border border-brown/20 text-xs"
-              >
-                Revertir
-              </button>
-            </>
+            <button
+              onClick={() => onAction('reset', r.id)}
+              className="btn-sm bg-sand text-brown hover:bg-sand-dark border border-brown/20 text-xs"
+            >
+              Revertir
+            </button>
           )}
           {r.status === 'accepted' && r.weekly_report_id && (
             <button
@@ -140,61 +125,6 @@ function ReporteCard({ r, weeks, onAction }) {
           </button>
         </div>
       </div>
-
-      {/* Panel aceptar con monto */}
-      {accepting && (
-        <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-300 space-y-2">
-          <p className="text-xs font-medium text-green-800">Monto a aceptar:</p>
-          <input
-            type="number"
-            className="input-base w-full"
-            value={acceptAmt}
-            onChange={e => setAcceptAmt(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <button
-              className="btn-sm bg-green-600 text-white hover:bg-green-700 flex-1"
-              onClick={() => { onAction('accept', r.id, { amount: acceptAmt }); setAccepting(false); }}
-            >
-              Confirmar
-            </button>
-            <button
-              className="btn-sm bg-sand text-brown border border-brown/20 flex-1"
-              onClick={() => setAccepting(false)}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Panel cambiar monto */}
-      {changing && (
-        <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-300 space-y-2">
-          <p className="text-xs font-medium text-amber-800">Nuevo monto negociado:</p>
-          <input
-            type="number"
-            className="input-base w-full"
-            value={changeAmt}
-            onChange={e => setChangeAmt(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <button
-              className="btn-sm bg-amber-500 text-white hover:bg-amber-600 flex-1"
-              onClick={() => { onAction('accept', r.id, { amount: changeAmt }); setChanging(false); }}
-            >
-              Confirmar
-            </button>
-            <button
-              className="btn-sm bg-sand text-brown border border-brown/20 flex-1"
-              onClick={() => setChanging(false)}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
@@ -277,7 +207,148 @@ function NuevoReporte({ projects, contractors, onSave, onClose }) {
   );
 }
 
-// ── Modal selector de semana ────────────────────────────────────────────────
+// ── Modal Aceptar y Pasar ────────────────────────────────────────────────────
+function ModalAceptarYPasar({ reporte, weeks, onConfirm, onClose }) {
+  const [monto, setMonto] = useState(reporte.amount_reported);
+  const [selectedWeek, setSelectedWeek] = useState('');
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newWeekDate, setNewWeekDate] = useState(nextFridayISO());
+
+  const handleConfirm = async () => {
+    if (!monto || monto <= 0) {
+      toast.error('Ingresa un monto válido');
+      return;
+    }
+
+    if (!selectedWeek && !creatingNew) {
+      toast.error('Selecciona una semana o crea una nueva');
+      return;
+    }
+
+    let weekId;
+    
+    if (creatingNew) {
+      // Crear nueva semana
+      try {
+        const { data } = await axios.post(`${API}/reports`, { week_date: newWeekDate });
+        weekId = data.id;
+        toast.success(`Semana ${newWeekDate} creada`);
+      } catch (err) {
+        toast.error(err?.response?.data?.error || 'Error al crear semana');
+        return;
+      }
+    } else {
+      weekId = selectedWeek;
+    }
+
+    onConfirm(reporte.id, monto, weekId);
+  };
+
+  const sortedWeeks = [...weeks].sort((a, b) => new Date(b.week_date) - new Date(a.week_date));
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <h2 className="text-lg font-bold text-brown">Aceptar Reporte</h2>
+        
+        <div className="bg-sand-lightest p-3 rounded-lg border border-sand">
+          <p className="text-sm text-gray-600"><strong>Proyecto:</strong> {reporte.project_name}</p>
+          <p className="text-sm text-gray-600"><strong>Contratista:</strong> {reporte.contractor_name}</p>
+          {reporte.description && (
+            <p className="text-xs text-gray-500 mt-1 italic">"{reporte.description}"</p>
+          )}
+        </div>
+
+        <div>
+          <label className="label-base">Monto a aceptar</label>
+          <input
+            type="number"
+            className="input-base w-full"
+            value={monto}
+            onChange={e => setMonto(e.target.value)}
+            min="0"
+            step="any"
+          />
+          {monto != reporte.amount_reported && (
+            <p className="text-xs text-amber-600 mt-1">
+              Monto original reportado: {fmt(reporte.amount_reported)}
+            </p>
+          )}
+        </div>
+
+        <div className="border-t border-sand-light pt-3">
+          {!creatingNew ? (
+            <>
+              <div>
+                <label className="label-base">Pasar a semana</label>
+                <select 
+                  className="input-base w-full" 
+                  value={selectedWeek} 
+                  onChange={e => setSelectedWeek(e.target.value)}
+                >
+                  <option value="">— Selecciona una semana —</option>
+                  {sortedWeeks.map(w => (
+                    <option key={w.id} value={w.id}>
+                      {fmtDate(w.week_date)} - Total: {fmt(w.total_general)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCreatingNew(true)}
+                className="text-sm text-olive hover:text-olive-dark underline mt-2"
+              >
+                + Crear nueva semana
+              </button>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="label-base">Fecha de la nueva semana (viernes)</label>
+                <input
+                  type="date"
+                  className="input-base w-full"
+                  value={newWeekDate}
+                  onChange={e => setNewWeekDate(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Recomendado: usar viernes
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCreatingNew(false)}
+                className="text-sm text-olive hover:text-olive-dark underline mt-2"
+              >
+                ← Volver a semanas existentes
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button 
+            onClick={handleConfirm}
+            className="btn-primary flex-1"
+          >
+            Aceptar y Pasar
+          </button>
+          <button 
+            onClick={onClose}
+            className="btn-secondary flex-1"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal selector de semana (solo para reportes ya aceptados) ───────────────
 function ModalSelectorSemana({ reportId, weeks, onConfirm, onClose }) {
   const [selectedWeek, setSelectedWeek] = useState('');
   const [creatingNew, setCreatingNew] = useState(false);
@@ -394,8 +465,8 @@ export default function Reportes() {
   const [weeks, setWeeks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showWeekSelector, setShowWeekSelector] = useState(false);
-  const [reportToPasar, setReportToPasar] = useState(null);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [reportToAccept, setReportToAccept] = useState(null);
 
   const load = async () => {
     try {
@@ -418,40 +489,47 @@ export default function Reportes() {
 
   useEffect(() => { load(); }, []);
 
-  const handleConfirmPasar = async (reportId, weekId) => {
+  const handleConfirmAcceptAndPasar = async (reportId, monto, weekId) => {
     try {
+      // 1. Aceptar el reporte con el monto
+      await axios.patch(`${API}/reportes/${reportId}/accept`, { amount_accepted: monto });
+      
+      // 2. Pasar a la semana seleccionada
       await axios.post(`${API}/reportes/${reportId}/pasar`, { weekly_report_id: weekId });
-      toast.success('Reporte pasado a relación semanal');
-      setShowWeekSelector(false);
-      setReportToPasar(null);
+      
+      toast.success('Reporte aceptado y pasado a relación semanal');
+      setShowAcceptModal(false);
+      setReportToAccept(null);
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'Error al pasar reporte');
+      toast.error(err?.response?.data?.error || 'Error al procesar reporte');
     }
   };
 
-  const handleAction = async (action, id, payload = {}) => {
+  const handleAction = async (action, idOrReport, payload = {}) => {
     try {
       if (action === 'delete') {
+        const id = typeof idOrReport === 'object' ? idOrReport.id : idOrReport;
         if (!window.confirm('¿Eliminar este reporte?')) return;
         await axios.delete(`${API}/reportes/${id}`);
         toast.success('Eliminado');
+        load();
       } else if (action === 'accept') {
-        await axios.patch(`${API}/reportes/${id}/accept`, { amount_accepted: payload.amount });
-        toast.success('Aceptado');
+        // Abrir modal de aceptar y pasar
+        setReportToAccept(idOrReport); // idOrReport es el objeto completo del reporte
+        setShowAcceptModal(true);
+        return; // No recargar todavía
       } else if (action === 'reject') {
+        const id = typeof idOrReport === 'object' ? idOrReport.id : idOrReport;
         await axios.patch(`${API}/reportes/${id}/reject`);
         toast.success('Rechazado');
+        load();
       } else if (action === 'reset') {
+        const id = typeof idOrReport === 'object' ? idOrReport.id : idOrReport;
         await axios.patch(`${API}/reportes/${id}/reset`);
         toast.success('Revertido a pendiente');
-      } else if (action === 'pasar') {
-        // Abrir modal selector de semana
-        setReportToPasar(id);
-        setShowWeekSelector(true);
-        return; // No recargar todavía
+        load();
       }
-      load();
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Error');
     }
@@ -524,15 +602,15 @@ export default function Reportes() {
         />
       )}
 
-      {/* Modal selector de semana */}
-      {showWeekSelector && reportToPasar && (
-        <ModalSelectorSemana
-          reportId={reportToPasar}
+      {/* Modal aceptar y pasar */}
+      {showAcceptModal && reportToAccept && (
+        <ModalAceptarYPasar
+          reporte={reportToAccept}
           weeks={weeks}
-          onConfirm={handleConfirmPasar}
+          onConfirm={handleConfirmAcceptAndPasar}
           onClose={() => {
-            setShowWeekSelector(false);
-            setReportToPasar(null);
+            setShowAcceptModal(false);
+            setReportToAccept(null);
           }}
         />
       )}
