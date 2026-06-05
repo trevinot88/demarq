@@ -28,18 +28,28 @@ router.get('/', async (req, res) => {
 
       currentWeekTotal = entries.reduce((s, e) => s + e.rep_a_cta, 0);
 
-      const officeTotal = (await db.query(
-        `SELECT COALESCE(SUM(amount), 0) AS total FROM office_payments WHERE report_id = $1`,
+      const { rows: officePayments } = await db.query(
+        `SELECT person_name, amount FROM office_payments WHERE report_id = $1`,
         [latestWeek.id]
-      )).rows[0];
-      currentWeekTotal += Number(officeTotal.total);
+      );
+      const officeTotal = officePayments.reduce((s, op) => s + Number(op.amount), 0);
+      currentWeekTotal += officeTotal;
 
       const summaryMap = {};
+      // Agregar contratistas
       for (const e of entries) {
         if (!summaryMap[e.contractor_id]) {
           summaryMap[e.contractor_id] = { contractor_name: e.contractor_name, total: 0 };
         }
         summaryMap[e.contractor_id].total += e.rep_a_cta;
+      }
+      // Agregar personas de oficina
+      for (const op of officePayments) {
+        const key = `office_${op.person_name}`;
+        if (!summaryMap[key]) {
+          summaryMap[key] = { contractor_name: op.person_name, total: 0 };
+        }
+        summaryMap[key].total += Number(op.amount);
       }
       currentWeekSummary = Object.values(summaryMap)
         .filter(s => s.total > 0)
