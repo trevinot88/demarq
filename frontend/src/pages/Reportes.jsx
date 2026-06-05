@@ -277,6 +277,115 @@ function NuevoReporte({ projects, contractors, onSave, onClose }) {
   );
 }
 
+// ── Modal selector de semana ────────────────────────────────────────────────
+function ModalSelectorSemana({ reportId, weeks, onConfirm, onClose }) {
+  const [selectedWeek, setSelectedWeek] = useState('');
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newWeekDate, setNewWeekDate] = useState(nextFridayISO());
+
+  const handleConfirm = async () => {
+    if (!selectedWeek && !creatingNew) {
+      toast.error('Selecciona una semana o crea una nueva');
+      return;
+    }
+
+    let weekId;
+    
+    if (creatingNew) {
+      // Crear nueva semana
+      try {
+        const { data } = await axios.post(`${API}/reports`, { week_date: newWeekDate });
+        weekId = data.id;
+        toast.success(`Semana ${newWeekDate} creada`);
+      } catch (err) {
+        toast.error(err?.response?.data?.error || 'Error al crear semana');
+        return;
+      }
+    } else {
+      weekId = selectedWeek;
+    }
+
+    onConfirm(reportId, weekId);
+  };
+
+  const sortedWeeks = [...weeks].sort((a, b) => new Date(b.week_date) - new Date(a.week_date));
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <h2 className="text-lg font-bold text-brown">Seleccionar Semana</h2>
+        <p className="text-sm text-gray-600">¿A qué relación semanal quieres pasar este reporte?</p>
+
+        {!creatingNew ? (
+          <>
+            <div>
+              <label className="label-base">Semana existente</label>
+              <select 
+                className="input-base w-full" 
+                value={selectedWeek} 
+                onChange={e => setSelectedWeek(e.target.value)}
+              >
+                <option value="">— Selecciona una semana —</option>
+                {sortedWeeks.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {fmtDate(w.week_date)} - Total: {fmt(w.total_general)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCreatingNew(true)}
+              className="text-sm text-olive hover:text-olive-dark underline"
+            >
+              + Crear nueva semana
+            </button>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="label-base">Fecha de la nueva semana (viernes)</label>
+              <input
+                type="date"
+                className="input-base w-full"
+                value={newWeekDate}
+                onChange={e => setNewWeekDate(e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Recomendado: usar viernes
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCreatingNew(false)}
+              className="text-sm text-olive hover:text-olive-dark underline"
+            >
+              ← Volver a semanas existentes
+            </button>
+          </>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <button 
+            onClick={handleConfirm}
+            className="btn-primary flex-1"
+          >
+            Confirmar
+          </button>
+          <button 
+            onClick={onClose}
+            className="btn-secondary flex-1"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Página principal ────────────────────────────────────────────────────────
 export default function Reportes() {
   const [reportes, setReportes] = useState([]);
@@ -285,6 +394,8 @@ export default function Reportes() {
   const [weeks, setWeeks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showWeekSelector, setShowWeekSelector] = useState(false);
+  const [reportToPasar, setReportToPasar] = useState(null);
 
   const load = async () => {
     try {
@@ -307,6 +418,18 @@ export default function Reportes() {
 
   useEffect(() => { load(); }, []);
 
+  const handleConfirmPasar = async (reportId, weekId) => {
+    try {
+      await axios.post(`${API}/reportes/${reportId}/pasar`, { weekly_report_id: weekId });
+      toast.success('Reporte pasado a relación semanal');
+      setShowWeekSelector(false);
+      setReportToPasar(null);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Error al pasar reporte');
+    }
+  };
+
   const handleAction = async (action, id, payload = {}) => {
     try {
       if (action === 'delete') {
@@ -323,18 +446,10 @@ export default function Reportes() {
         await axios.patch(`${API}/reportes/${id}/reset`);
         toast.success('Revertido a pendiente');
       } else if (action === 'pasar') {
-        // Buscar o crear semana del viernes más próximo
-        const targetDate = nextFridayISO();
-        let week = weeks.find(w => w.week_date === targetDate);
-        
-        if (!week) {
-          const { data } = await axios.post(`${API}/reports`, { week_date: targetDate });
-          week = { id: data.id, week_date: targetDate };
-          toast.success(`Semana ${targetDate} creada`);
-        }
-        
-        await axios.post(`${API}/reportes/${id}/pasar`, { weekly_report_id: week.id });
-        toast.success('Pasado a relación semanal');
+        // Abrir modal selector de semana
+        setReportToPasar(id);
+        setShowWeekSelector(true);
+        return; // No recargar todavía
       }
       load();
     } catch (err) {
@@ -406,6 +521,19 @@ export default function Reportes() {
           contractors={contractors}
           onSave={() => { setShowForm(false); load(); }}
           onClose={() => setShowForm(false)}
+        />
+      )}
+
+      {/* Modal selector de semana */}
+      {showWeekSelector && reportToPasar && (
+        <ModalSelectorSemana
+          reportId={reportToPasar}
+          weeks={weeks}
+          onConfirm={handleConfirmPasar}
+          onClose={() => {
+            setShowWeekSelector(false);
+            setReportToPasar(null);
+          }}
         />
       )}
     </div>
