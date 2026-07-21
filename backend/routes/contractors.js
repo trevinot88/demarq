@@ -74,14 +74,18 @@ router.get('/:id', async (req, res) => {
       ORDER BY wr.week_date DESC, p.name
     `, [req.params.id]);
 
+    // ⛔ Bug 1: Excluir proyectos cerrados del saldo global del contratista
+    // (su saldo es 0 por definición, no deben contribuir al saldo pendiente)
     const totals = (await db.query(`
       SELECT COALESCE(SUM(re.rep_a_cta), 0) AS total_pagado,
              COALESCE(SUM(cpb.valor_presupuesto), 0) AS total_vp
       FROM report_entries re
+      JOIN projects p ON p.id = re.project_id
       LEFT JOIN contractor_project_budgets cpb
              ON cpb.contractor_id = re.contractor_id
             AND cpb.project_id   = re.project_id
       WHERE re.contractor_id = $1
+        AND p.status = 'active'
     `, [req.params.id])).rows[0];
 
     res.json({ contractor, projects, history, totals });
