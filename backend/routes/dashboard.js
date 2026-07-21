@@ -16,6 +16,7 @@ router.get('/', async (req, res) => {
     if (latestWeek) {
       const { rows: entries } = await db.query(`
         SELECT re.*, c.name AS contractor_name, p.name AS project_name,
+               p.status AS project_status,
                COALESCE(NULLIF(re.vp, 0), cpb.valor_presupuesto, 0) AS vp
         FROM report_entries re
         JOIN contractors c  ON c.id  = re.contractor_id
@@ -24,6 +25,7 @@ router.get('/', async (req, res) => {
                ON cpb.contractor_id = re.contractor_id
               AND cpb.project_id   = re.project_id
         WHERE re.report_id = $1
+          AND p.status = 'active'  -- ⛔ Bug 1+3: Excluir obras cerradas del dashboard
       `, [latestWeek.id]);
 
       currentWeekTotal = entries.reduce((s, e) => s + e.rep_a_cta, 0);

@@ -53,6 +53,13 @@ router.get('/:id', async (req, res) => {
       ORDER BY p.name
     `, [req.params.id]);
 
+    // ⛔ Bug 1: Forzar saldo a cero en proyectos cerrados
+    for (const p of projects) {
+      if (p.status === 'closed') {
+        p.total_rep_a_cta = Number(p.vp) || 0;
+      }
+    }
+
     const { rows: history } = await db.query(`
       SELECT wr.week_date, p.name AS project_name,
              re.ent_a_cta, re.rep_a_cta, re.notes,

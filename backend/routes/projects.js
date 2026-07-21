@@ -74,6 +74,17 @@ router.get('/:id', async (req, res) => {
       ORDER BY wr.week_date DESC
     `, [req.params.id]);
 
+    // ⛔ Bug 1: Si el proyecto está cerrado, forzar total_pagado = VP total
+    // para que el saldo pendiente sea estrictamente cero.
+    if (project.status === 'closed') {
+      for (const c of contractors) {
+        const vpBase = Number(c.valor_presupuesto) || 0;
+        const extras = Number(c.total_extras) || 0;
+        const vpTotal = vpBase + extras;
+        c.total_pagado = vpTotal;
+      }
+    }
+
     res.json({ project, contractors, history });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -34,48 +34,37 @@ async function updateVPForExtras(contractorId, projectId, client = null) {
   }
 }
 
-/**
- * Actualiza el status de proyectos basado en la última semana.
- * Proyectos en la última semana → 'active'
- * Proyectos NO en la última semana → 'closed'
- */
-async function updateProjectStatus(client = null) {
-  const conn = client || db.pool;
-  try {
-    // Obtener la última semana
-    const { rows: [latestWeek] } = await conn.query(`
-      SELECT id FROM weekly_reports ORDER BY week_date DESC LIMIT 1
-    `);
-
-    if (!latestWeek) return; // No hay semanas, no hacer nada
-
-    // Activar proyectos que están en la última semana
-    await conn.query(`
-      UPDATE projects 
-      SET status = 'active' 
-      WHERE id IN (
-        SELECT DISTINCT project_id 
-        FROM report_entries 
-        WHERE report_id = $1
-      )
-      AND status != 'active'
-    `, [latestWeek.id]);
-
-    // Cerrar proyectos que NO están en la última semana
-    await conn.query(`
-      UPDATE projects 
-      SET status = 'closed' 
-      WHERE status = 'active' 
-        AND id NOT IN (
+  /**
+   * ⚠️ DESACTIVADO — Antes cerraba automáticamente proyectos que no estaban
+   * en la última semana. El estatus de un proyecto SOLO debe cambiar mediante
+   * acción manual del usuario en la página de Proyectos.
+   * 
+   * Se mantiene la función como utilidad para tareas de mantenimiento manual
+   * si es necesario, pero ya no se invoca desde ningún endpoint.
+   */
+  async function updateProjectStatus(client = null) {
+    const conn = client || db.pool;
+    try {
+      const { rows: [latestWeek] } = await conn.query(`
+        SELECT id FROM weekly_reports ORDER BY week_date DESC LIMIT 1
+      `);
+      if (!latestWeek) return;
+      // Activar proyectos que están en la última semana
+      await conn.query(`
+        UPDATE projects 
+        SET status = 'active' 
+        WHERE id IN (
           SELECT DISTINCT project_id 
           FROM report_entries 
           WHERE report_id = $1
         )
-    `, [latestWeek.id]);
-  } catch (err) {
-    console.error('Error updating project status:', err.message);
+        AND status != 'active'
+      `, [latestWeek.id]);
+      // ⛔ Ya NO se cierran proyectos automáticamente
+    } catch (err) {
+      console.error('Error updating project status:', err.message);
+    }
   }
-}
 
 async function getReportDetail(id) {
   const report = (await db.query(`SELECT * FROM weekly_reports WHERE id = $1`, [id])).rows[0];
@@ -86,6 +75,7 @@ async function getReportDetail(id) {
            re.ent_a_cta, re.rep_a_cta, re.notes,
            c.name  AS contractor_name,
            p.name  AS project_name,
+           p.status AS project_status,
            COALESCE(
              NULLIF(re.vp, 0), 
              cpb.valor_presupuesto + COALESCE(
@@ -101,6 +91,7 @@ async function getReportDetail(id) {
            ON cpb.contractor_id = re.contractor_id
           AND cpb.project_id   = re.project_id
     WHERE re.report_id = $1
+      AND p.status = 'active'  -- ⛔ Bug 3: Excluir obras cerradas de la relación semanal
     ORDER BY p.name, c.name
   `, [id]);
 
@@ -245,7 +236,7 @@ router.post('/', async (req, res) => {
     }
 
     await client.query('COMMIT');
-    await updateProjectStatus(); // Actualizar status de proyectos
+    // ⛔ updateProjectStatus removido — el status solo cambia manualmente
     res.status(201).json({ id: reportId, week_date });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -287,7 +278,7 @@ router.delete('/:id', async (req, res) => {
     await client.query(`DELETE FROM weekly_reports WHERE id = $1`, [req.params.id]);
     
     await client.query('COMMIT');
-    await updateProjectStatus(); // Actualizar status de proyectos
+    // ⛔ updateProjectStatus removido — el status solo cambia manualmente
     res.json({ ok: true });
   } catch (e) {
     await client.query('ROLLBACK');
@@ -364,7 +355,7 @@ router.post('/:id/entries', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
     `, [req.params.id, contractor_id, project_id, vp || 0, ent_a_cta, rep_a_cta, notes]);
-    await updateProjectStatus(); // Actualizar status de proyectos
+    // ⛔ updateProjectStatus removido — el status solo cambia manualmente
     res.status(201).json({ id: rows[0].id });
   } catch (e) {
     res.status(409).json({ error: 'Entrada ya existe para ese contratista/proyecto' });
@@ -378,7 +369,7 @@ router.delete('/:id/entries/:entryId', async (req, res) => {
       `DELETE FROM report_entries WHERE id = $1 AND report_id = $2`,
       [req.params.entryId, req.params.id]
     );
-    await updateProjectStatus(); // Actualizar status de proyectos
+    // ⛔ updateProjectStatus removido — el status solo cambia manualmente
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
