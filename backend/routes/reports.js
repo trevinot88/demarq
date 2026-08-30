@@ -8,6 +8,12 @@ const ExcelJS = require('exceljs');
  * Actualiza el VP en todas las relaciones semanales para un contratista/proyecto
  * cuando se modifican los extras.
  */
+/**
+ * 🔒 PUNTO 3 — Herencia canónica / historia inmutable:
+ * Solo actualiza el VP de la semana EN CURSO (la más reciente) y de las
+ * semanas FUTURAS que pudieran existir. Las semanas ya cerradas NO se
+ * reescriben: su snapshot de `vp` es histórico y debe permanecer intacto.
+ */
 async function updateVPForExtras(contractorId, projectId, client = null) {
   const conn = client || db.pool;
   try {
@@ -23,11 +29,21 @@ async function updateVPForExtras(contractorId, projectId, client = null) {
 
     if (!vpData) return;
 
-    // Actualizar VP en todas las entries de este contratista/proyecto
+    // Solo semanas actuales/futuras: report_id con week_date >= MAX(week_date).
+    // Se usa TO_DATE para ordenar temporalmente aunque week_date sea TEXT.
     await conn.query(`
-      UPDATE report_entries
+      UPDATE report_entries re
       SET vp = $1
-      WHERE contractor_id = $2 AND project_id = $3
+      WHERE re.contractor_id = $2 AND re.project_id = $3
+        AND re.report_id IN (
+          SELECT wr.id FROM weekly_reports wr
+          WHERE wr.week_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+            AND TO_DATE(wr.week_date, 'YYYY-MM-DD') >= (
+              SELECT MAX(TO_DATE(w2.week_date, 'YYYY-MM-DD'))
+              FROM weekly_reports w2
+              WHERE w2.week_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+            )
+        )
     `, [vpData.total_vp, contractorId, projectId]);
   } catch (err) {
     console.error('Error updating VP for extras:', err.message);
@@ -173,6 +189,14 @@ router.post('/', async (req, res) => {
   const { week_date } = req.body;
   if (!week_date) return res.status(400).json({ error: 'week_date requerido' });
 
+  // 🔒 PUNTO 5 — Ordenamiento temporal confiable sin alterar la BD:
+  // week_date es TEXT, así que validamos el formato YYYY-MM-DD ANTES de
+  // insertar y usamos TO_DATE en SQL para comparar fechas realmente
+  // (no como texto), garantizando el ordenamiento temporal correcto.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(week_date)) {
+    return res.status(400).json({ error: 'week_date debe tener formato YYYY-MM-DD' });
+  }
+
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
@@ -190,14 +214,22 @@ router.post('/', async (req, res) => {
     )).rows[0].id;
 
     const prev = (await client.query(
-      `SELECT id FROM weekly_reports WHERE week_date < $1 ORDER BY week_date DESC LIMIT 1`, [week_date]
+      `SELECT id, week_date FROM weekly_reports
+       WHERE week_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+         AND TO_DATE(week_date, 'YYYY-MM-DD') < TO_DATE($1, 'YYYY-MM-DD')
+       ORDER BY TO_DATE(week_date, 'YYYY-MM-DD') DESC
+       LIMIT 1`, [week_date]
     )).rows[0];
 
+    // 🔒 PUNTO 4 — Fuente única de verdad:
+    // El presupuesto global (contractor_project_budgets) SOLO se usa como
+    // semilla inicial cuando NO existe semana previa. A partir de la primera
+    // semana, la herencia canónica proviene EXCLUSIVAMENTE del reporte anterior.
     const { rows: pairs } = await client.query(`
-      SELECT cpb.contractor_id, cpb.project_id, 
+      SELECT cpb.contractor_id, cpb.project_id,
              cpb.valor_presupuesto + COALESCE(
-               (SELECT SUM(amount) FROM contractor_project_extras cpe 
-                WHERE cpe.contractor_id = cpb.contractor_id 
+               (SELECT SUM(amount) FROM contractor_project_extras cpe
+                WHERE cpe.contractor_id = cpb.contractor_id
                   AND cpe.project_id = cpb.project_id), 0
              ) AS valor_presupuesto
       FROM contractor_project_budgets cpb
@@ -205,35 +237,47 @@ router.post('/', async (req, res) => {
       WHERE p.status = 'active'
     `);
 
+    console.log(`\n═══ [NUEVA SEMANA ${week_date}] Creando reporte (ID ${reportId}) ═══`);
+    console.log(`    Semana previa: ${prev ? `${prev.week_date} (ID ${prev.id})` : 'NINGUNA → modo semilla (presupuesto base)'}`);
+
     for (const { contractor_id, project_id, valor_presupuesto } of pairs) {
       let ent_a_cta = 0;
-      
-      // Primero verificar si hay un valor manual configurado en el proyecto
-      const manualValue = (await client.query(
-        `SELECT total_pagado_manual FROM contractor_project_budgets
-         WHERE contractor_id = $1 AND project_id = $2`,
-        [contractor_id, project_id]
-      )).rows[0];
-      
-      if (manualValue && manualValue.total_pagado_manual != null) {
-        // Usar el valor manual si existe
-        ent_a_cta = manualValue.total_pagado_manual;
-      } else if (prev) {
-        // Si no hay manual, usar la suma de la semana anterior
+      let vp = valor_presupuesto || 0;
+      let source = 'SEED';
+
+      if (prev) {
+        // 🔒 PUNTO 1 y 2 — Herencia canónica EXCLUSIVA de la semana anterior.
+        // Ya NO se consulta total_pagado_manual (era un caché congelado que
+        // corrompía las semanas siguientes). Solo leemos report_entries previos.
         const prevEntry = (await client.query(
-          `SELECT ent_a_cta, rep_a_cta FROM report_entries
+          `SELECT ent_a_cta, rep_a_cta, vp FROM report_entries
            WHERE report_id = $1 AND contractor_id = $2 AND project_id = $3`,
           [prev.id, contractor_id, project_id]
         )).rows[0];
-        if (prevEntry) ent_a_cta = prevEntry.ent_a_cta + prevEntry.rep_a_cta;
+
+        if (prevEntry) {
+          // ent acumulado = ent anterior + rep anterior (pagos totales a la fecha)
+          ent_a_cta = prevEntry.ent_a_cta + prevEntry.rep_a_cta;
+          // vp nuevo = saldo_final de la semana anterior (vp - ent - rep)
+          vp = prevEntry.vp - prevEntry.ent_a_cta - prevEntry.rep_a_cta;
+          source = 'PREV';
+          console.log(`    [PREV] contractor=${contractor_id} project=${project_id}: ent=${ent_a_cta} (prev ent ${prevEntry.ent_a_cta} + rep ${prevEntry.rep_a_cta}), vp=${vp} (saldo_final prev)`);
+        } else {
+          // Sin entrada previa para este par: semilla del presupuesto base
+          source = 'SEED';
+          console.log(`    [SEED] contractor=${contractor_id} project=${project_id}: sin entrada previa, vp=${vp} (presupuesto base + extras)`);
+        }
+      } else {
+        console.log(`    [SEED] contractor=${contractor_id} project=${project_id}: vp=${vp} (presupuesto base + extras, primera semana)`);
       }
-      
+
       await client.query(`
         INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
         VALUES ($1, $2, $3, $4, $5, 0, '')
         ON CONFLICT (report_id, contractor_id, project_id) DO NOTHING
-      `, [reportId, contractor_id, project_id, valor_presupuesto || 0, ent_a_cta]);
+      `, [reportId, contractor_id, project_id, vp, ent_a_cta]);
     }
+    console.log(`═══ [NUEVA SEMANA ${week_date}] Completada ═══\n`);
 
     await client.query('COMMIT');
     // ⛔ updateProjectStatus removido — el status solo cambia manualmente
@@ -315,15 +359,12 @@ router.put('/:id/entries/:entryId', async (req, res) => {
        WHERE id = $5 AND report_id = $6
     `, [ent_a_cta ?? null, rep_a_cta ?? null, notes ?? null, vp ?? null, req.params.entryId, req.params.id]);
     
-    // Si se editó ent_a_cta, actualizar el total_pagado_manual en el proyecto
-    if (ent_a_cta !== undefined && ent_a_cta !== null) {
-      await db.query(`
-        UPDATE contractor_project_budgets
-        SET total_pagado_manual = $1
-        WHERE contractor_id = $2 AND project_id = $3
-      `, [ent_a_cta, contractor_id, project_id]);
-    }
-    
+    // ⛔ PUNTO 1 — ELIMINADO: la escritura automática de total_pagado_manual.
+    // Este campo ya NO se alimenta desde el guardado semanal, porque actuaba
+    // como un caché congelado que la creación de semanas usaba como fuente
+    // prioritaria, corrompiendo la herencia entre semanas. La herencia ahora
+    // es canónica: siempre proviene de la semana anterior (POST /api/reports).
+
     // Si se editó VP, actualizar el valor_presupuesto en el proyecto
     if (vp !== undefined && vp !== null) {
       await db.query(`
