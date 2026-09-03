@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const db = require('../db');
 const { updateVPForExtras } = require('./reports');
+const { recalcCurrentWeekEntry } = require('../finance');
 
 // GET /api/projects
 router.get('/', async (req, res) => {
@@ -185,6 +186,13 @@ router.put('/:id/contractors/:cid', async (req, res) => {
     // Si se actualizó el valor_presupuesto, actualizar VP en relaciones semanales
     if (valor_presupuesto !== undefined && valor_presupuesto !== null) {
       await updateVPForExtras(req.params.cid, req.params.id);
+    }
+
+    // 🔒 Si se actualizó el pago manual (total_pagado_manual), recalcular la
+    // entrada de la SEMANA EN CURSO con el estado real, para que PROYECTOS y
+    // Relación Semanal nunca diverjan (semana abierta; históricas intactas).
+    if (total_pagado_manual !== undefined) {
+      await recalcCurrentWeekEntry(req.params.cid, req.params.id);
     }
     
     if (names.rows[0]) {

@@ -62,4 +62,37 @@ async function getContractorFinancialState(contractorId, projectId, client = nul
   };
 }
 
-module.exports = { getContractorFinancialState };
+/**
+ * 🔒 SINCRONIZACIÓN PROYECTOS → SEMANA EN CURSO:
+ * Recalcula vp y ent_a_cta de la entrada del par (contratista, proyecto) en la
+ * semana MÁS RECIENTE a partir del estado financiero real. Las semanas
+ * históricas NO se tocan (snapshot inmutable).
+ *
+ * Se invoca cuando el usuario registra/edita pagos manuales (total_pagado_manual)
+ * en PROYECTOS, para que la Relación Semanal abierta refleje el pago de inmediato
+ * y no "hasta la semana siguiente".
+ *
+ * vp       = VP_TOTAL − pagos_previos (pagos acumulados menos lo reportado EN la semana)
+ * ent_a_cta= pagos_previos
+ */
+async function recalcCurrentWeekEntry(contractorId, projectId, client = null) {
+  const conn = client || db.pool;
+  const state = await getContractorFinancialState(contractorId, projectId, conn);
+  if (!state) return;
+
+  const { rowCount } = await conn.query(`
+    UPDATE report_entries re
+    SET ent_a_cta = $1 - re.rep_a_cta,
+        vp        = $2 - ($1 - re.rep_a_cta)
+    WHERE re.contractor_id = $3 AND re.project_id = $4
+      AND re.report_id = (
+        SELECT wr.id FROM weekly_reports wr
+        WHERE wr.week_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+        ORDER BY TO_DATE(wr.week_date, 'YYYY-MM-DD') DESC
+        LIMIT 1
+      )
+  `, [state.pagos_acumulados, state.vp_total, contractorId, projectId]);
+  return rowCount;
+}
+
+module.exports = { getContractorFinancialState, recalcCurrentWeekEntry };
