@@ -1,6 +1,7 @@
 'use strict';
 const router = require('express').Router();
 const db     = require('../db');
+const { getContractorFinancialState } = require('../finance');
 
 // ── GET /api/reportes ─────────────────────────────────────────────────────────
 // Lista todos los reportes de avance con info de proyecto y contratista
@@ -164,12 +165,16 @@ router.post('/:id/pasar', async (req, res) => {
     const amount = ar.amount_accepted ?? ar.amount_reported;
 
     // Upsert en report_entries
+    // 🔒 Si se crea una entrada nueva (el contratista no estaba en esa semana),
+    // el vp se calcula con la fuente única de verdad: VP_TOTAL − PAGOS_ACUMULADOS.
+    const state = await getContractorFinancialState(ar.contractor_id, ar.project_id);
+    const vpInicial = state ? state.saldo : 0;
     await db.query(`
-      INSERT INTO report_entries (report_id, contractor_id, project_id, ent_a_cta, rep_a_cta, notes)
-      VALUES ($1, $2, $3, 0, $4, $5)
+      INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
+      VALUES ($1, $2, $3, $4, 0, $5, $6)
       ON CONFLICT (report_id, contractor_id, project_id)
       DO UPDATE SET rep_a_cta = report_entries.rep_a_cta + EXCLUDED.rep_a_cta
-    `, [weekly_report_id, ar.contractor_id, ar.project_id, amount,
+    `, [weekly_report_id, ar.contractor_id, ar.project_id, vpInicial, amount,
         `Reporte #${ar.id} — ${ar.description || ''}`]);
 
     // Marcar como pasado

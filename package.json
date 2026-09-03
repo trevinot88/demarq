@@ -13,6 +13,7 @@
     "postinstall": "cd frontend && npm install"
   },
   "dependencies": {
+    "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",

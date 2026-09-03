@@ -48,14 +48,17 @@ router.get('/:id', async (req, res) => {
              AND cpe.project_id = cpb.project_id), 0
         ) AS total_extras,
         COALESCE(
-          cpb.total_pagado_manual,
-          (SELECT re.ent_a_cta + re.rep_a_cta
-           FROM report_entries re
-           JOIN weekly_reports wr ON wr.id = re.report_id
-           WHERE re.contractor_id = cpb.contractor_id
-             AND re.project_id = cpb.project_id
-           ORDER BY wr.week_date DESC LIMIT 1)
-        , 0) AS total_pagado
+          GREATEST(
+            cpb.total_pagado_manual,
+            (SELECT re.ent_a_cta + re.rep_a_cta
+             FROM report_entries re
+             JOIN weekly_reports wr ON wr.id = re.report_id
+             WHERE re.contractor_id = cpb.contractor_id
+               AND re.project_id = cpb.project_id
+             ORDER BY TO_DATE(wr.week_date, 'YYYY-MM-DD') DESC LIMIT 1)
+          ),
+          0
+        ) AS total_pagado
       FROM contractor_project_budgets cpb
       JOIN contractors c ON c.id = cpb.contractor_id
       WHERE cpb.project_id = $1

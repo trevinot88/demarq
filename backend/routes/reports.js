@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const db = require('../db');
 const ExcelJS = require('exceljs');
+const { getContractorFinancialState } = require('../finance');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 /**
@@ -17,17 +18,11 @@ const ExcelJS = require('exceljs');
 async function updateVPForExtras(contractorId, projectId, client = null) {
   const conn = client || db.pool;
   try {
-    // Calcular VP total (base + extras)
-    const { rows: [vpData] } = await conn.query(`
-      SELECT cpb.valor_presupuesto + COALESCE(
-        (SELECT SUM(amount) FROM contractor_project_extras cpe
-         WHERE cpe.contractor_id = $1 AND cpe.project_id = $2), 0
-      ) AS total_vp
-      FROM contractor_project_budgets cpb
-      WHERE cpb.contractor_id = $1 AND cpb.project_id = $2
-    `, [contractorId, projectId]);
-
-    if (!vpData) return;
+    // 🔒 Fuente única de verdad: VP de la semana en curso =
+    //    VP_TOTAL (base + extras) − PAGOS_ACUMULADOS.
+    //    NUNCA el VP_TOTAL plano (eso borraba el efecto de los pagos).
+    const state = await getContractorFinancialState(contractorId, projectId, conn);
+    if (!state) return;
 
     // Solo semanas actuales/futuras: report_id con week_date >= MAX(week_date).
     // Se usa TO_DATE para ordenar temporalmente aunque week_date sea TEXT.
@@ -44,7 +39,7 @@ async function updateVPForExtras(contractorId, projectId, client = null) {
               WHERE w2.week_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
             )
         )
-    `, [vpData.total_vp, contractorId, projectId]);
+    `, [state.saldo, contractorId, projectId]);
   } catch (err) {
     console.error('Error updating VP for extras:', err.message);
   }
@@ -221,34 +216,32 @@ router.post('/', async (req, res) => {
        LIMIT 1`, [week_date]
     )).rows[0];
 
-    // 🔒 PUNTO 4 — Fuente única de verdad:
-    // El presupuesto global (contractor_project_budgets) SOLO se usa como
-    // semilla inicial cuando NO existe semana previa. A partir de la primera
-    // semana, la herencia canónica proviene EXCLUSIVAMENTE del reporte anterior.
+    // 🔒 PUNTO 4 — Fuente única de verdad (backend/finance.js):
+    // Cada nueva semana parte del ESTADO FINANCIERO REAL ACUMULADO del par
+    // (contratista, proyecto): VP_TOTAL (base + extras) − PAGOS_ACUMULADOS
+    // (total_pagado_manual si existe, o ent+rep de la entrada más reciente).
+    // La semana anterior sigue siendo la referencia preferida cuando existe,
+    // pero NUNCA se reinicia al presupuesto base si falta una semana intermedia.
     const { rows: pairs } = await client.query(`
-      SELECT cpb.contractor_id, cpb.project_id,
-             cpb.valor_presupuesto + COALESCE(
-               (SELECT SUM(amount) FROM contractor_project_extras cpe
-                WHERE cpe.contractor_id = cpb.contractor_id
-                  AND cpe.project_id = cpb.project_id), 0
-             ) AS valor_presupuesto
+      SELECT cpb.contractor_id, cpb.project_id
       FROM contractor_project_budgets cpb
       JOIN projects p ON p.id = cpb.project_id
       WHERE p.status = 'active'
     `);
 
     console.log(`\n═══ [NUEVA SEMANA ${week_date}] Creando reporte (ID ${reportId}) ═══`);
-    console.log(`    Semana previa: ${prev ? `${prev.week_date} (ID ${prev.id})` : 'NINGUNA → modo semilla (presupuesto base)'}`);
+    console.log(`    Semana previa: ${prev ? `${prev.week_date} (ID ${prev.id})` : 'NINGUNA'}`);
 
-    for (const { contractor_id, project_id, valor_presupuesto } of pairs) {
-      let ent_a_cta = 0;
-      let vp = valor_presupuesto || 0;
-      let source = 'SEED';
+    for (const { contractor_id, project_id } of pairs) {
+      // Estado financiero real acumulado (misma fuente que PROYECTOS)
+      const state = await getContractorFinancialState(contractor_id, project_id, client);
+      if (!state) continue; // sin presupuesto asignado: nada que heredar
+
+      let ent_a_cta = state.pagos_acumulados; // pagos acumulados a la fecha
+      let vp = state.saldo;                   // saldo pendiente real
+      let source = 'STATE';
 
       if (prev) {
-        // 🔒 PUNTO 1 y 2 — Herencia canónica EXCLUSIVA de la semana anterior.
-        // Ya NO se consulta total_pagado_manual (era un caché congelado que
-        // corrompía las semanas siguientes). Solo leemos report_entries previos.
         const prevEntry = (await client.query(
           `SELECT ent_a_cta, rep_a_cta, vp FROM report_entries
            WHERE report_id = $1 AND contractor_id = $2 AND project_id = $3`,
@@ -256,20 +249,18 @@ router.post('/', async (req, res) => {
         )).rows[0];
 
         if (prevEntry) {
-          // ent acumulado = ent anterior + rep anterior (pagos totales a la fecha)
-          ent_a_cta = prevEntry.ent_a_cta + prevEntry.rep_a_cta;
-          // vp nuevo = saldo_final de la semana anterior (vp - ent - rep)
-          vp = prevEntry.vp - prevEntry.ent_a_cta - prevEntry.rep_a_cta;
-          source = 'PREV';
-          console.log(`    [PREV] contractor=${contractor_id} project=${project_id}: ent=${ent_a_cta} (prev ent ${prevEntry.ent_a_cta} + rep ${prevEntry.rep_a_cta}), vp=${vp} (saldo_final prev)`);
-        } else {
-          // Sin entrada previa para este par: semilla del presupuesto base
-          source = 'SEED';
-          console.log(`    [SEED] contractor=${contractor_id} project=${project_id}: sin entrada previa, vp=${vp} (presupuesto base + extras)`);
+          const prevVp = prevEntry.vp - prevEntry.ent_a_cta - prevEntry.rep_a_cta;
+          // La herencia de la semana previa manda SOLO si el estado acumulado
+          // coincide (mismo cálculo por construcción). Si difieren, gana el
+          // estado acumulado real (fuente única de verdad).
+          ent_a_cta = state.pagos_acumulados;
+          vp = state.saldo;
+          source = 'STATE';
+          console.log(`    [STATE] contractor=${contractor_id} project=${project_id}: ent=${ent_a_cta}, vp=${vp} (prev-chain daba vp=${prevVp})`);
         }
-      } else {
-        console.log(`    [SEED] contractor=${contractor_id} project=${project_id}: vp=${vp} (presupuesto base + extras, primera semana)`);
       }
+
+      console.log(`    [${source}] contractor=${contractor_id} project=${project_id}: vp_total=${state.vp_total}, pagos=${state.pagos_acumulados}, vp_inicial=${vp}`);
 
       await client.query(`
         INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
@@ -365,15 +356,10 @@ router.put('/:id/entries/:entryId', async (req, res) => {
     // prioritaria, corrompiendo la herencia entre semanas. La herencia ahora
     // es canónica: siempre proviene de la semana anterior (POST /api/reports).
 
-    // Si se editó VP, actualizar el valor_presupuesto en el proyecto
-    if (vp !== undefined && vp !== null) {
-      await db.query(`
-        INSERT INTO contractor_project_budgets (contractor_id, project_id, valor_presupuesto)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (contractor_id, project_id) 
-        DO UPDATE SET valor_presupuesto = EXCLUDED.valor_presupuesto
-      `, [contractor_id, project_id, vp]);
-    }
+    // 🔒 PUNTO — Sin escritura inversa: el V.P. de una entrada es un snapshot
+    // (saldo al inicio de la semana) y NUNCA debe escribirse de vuelta en
+    // valor_presupuesto del presupuesto global. Mezclar ambos corrompía el
+    // estado acumulado de las semanas siguientes.
     
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -384,18 +370,19 @@ router.post('/:id/entries', async (req, res) => {
   const { contractor_id, project_id, ent_a_cta = 0, rep_a_cta = 0, notes = '', vp } = req.body;
   if (!contractor_id || !project_id) return res.status(400).json({ error: 'contractor_id y project_id requeridos' });
   try {
-    if (vp !== undefined) {
-      await db.query(`
-        INSERT INTO contractor_project_budgets (contractor_id, project_id, valor_presupuesto)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (contractor_id, project_id) DO UPDATE SET valor_presupuesto = EXCLUDED.valor_presupuesto
-      `, [contractor_id, project_id, vp]);
+    // 🔒 Fuente única de verdad: si no envían vp, calcularlo como
+    // VP_TOTAL − PAGOS_ACUMULADOS (mismo cálculo que al crear la semana).
+    let vpInicial = vp;
+    if (vpInicial === undefined || vpInicial === null) {
+      const state = await getContractorFinancialState(contractor_id, project_id);
+      vpInicial = state ? state.saldo : 0;
     }
+    // ⛔ Sin escritura inversa: el vp NO se guarda en valor_presupuesto.
     const { rows } = await db.query(`
       INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
-    `, [req.params.id, contractor_id, project_id, vp || 0, ent_a_cta, rep_a_cta, notes]);
+    `, [req.params.id, contractor_id, project_id, vpInicial, ent_a_cta, rep_a_cta, notes]);
     // ⛔ updateProjectStatus removido — el status solo cambia manualmente
     res.status(201).json({ id: rows[0].id });
   } catch (e) {

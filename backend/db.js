@@ -57,9 +57,21 @@ function connectionStringFromPgEnv() {
 
 const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL) || connectionStringFromPgEnv();
 
+// ── SSL ───────────────────────────────────────────────────────────────────────
+// Supabase (directo o pooler) y Render exigen SSL. En local (localhost) se
+// desactiva. Se respeta sslmode=disable en la URL para forzar sin SSL.
+const isManagedDb = connectionString &&
+  /supabase|pooler|render\.com|dpg-/.test(connectionString) &&
+  !/sslmode=disable/.test(connectionString);
+
 const pool = new Pool({
   connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: isManagedDb ? { rejectUnauthorized: false } : false,
+  // En serverless cada función tiene su propio pool: mantenerlo pequeño
+  // para no agotar las conexiones del pooler de Supabase.
+  max: Number(process.env.PGPOOL_MAX) || (process.env.VERCEL ? 3 : 10),
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 10000,
 });
 
 const db = {
