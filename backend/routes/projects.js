@@ -2,7 +2,6 @@
 const router = require('express').Router();
 const db = require('../db');
 const { updateVPForExtras } = require('./reports');
-const { recalcCurrentWeekEntry } = require('../finance');
 
 // GET /api/projects
 router.get('/', async (req, res) => {
@@ -49,15 +48,13 @@ router.get('/:id', async (req, res) => {
              AND cpe.project_id = cpb.project_id), 0
         ) AS total_extras,
         COALESCE(
-          GREATEST(
-            cpb.total_pagado_manual,
-            (SELECT re.ent_a_cta + re.rep_a_cta
-             FROM report_entries re
-             JOIN weekly_reports wr ON wr.id = re.report_id
-             WHERE re.contractor_id = cpb.contractor_id
-               AND re.project_id = cpb.project_id
-             ORDER BY TO_DATE(wr.week_date, 'YYYY-MM-DD') DESC LIMIT 1)
-          ),
+          (SELECT re.ent_a_cta + re.rep_a_cta
+           FROM report_entries re
+           JOIN weekly_reports wr ON wr.id = re.report_id
+           WHERE re.contractor_id = cpb.contractor_id
+             AND re.project_id = cpb.project_id
+             AND wr.week_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+           ORDER BY TO_DATE(wr.week_date, 'YYYY-MM-DD') DESC LIMIT 1),
           0
         ) AS total_pagado
       FROM contractor_project_budgets cpb
@@ -169,7 +166,10 @@ router.post('/:id/contractors', async (req, res) => {
 // PUT /api/projects/:id/contractors/:cid
 router.put('/:id/contractors/:cid', async (req, res) => {
   try {
-    const { valor_presupuesto, notes, total_pagado_manual } = req.body;
+    // 🔒 total_pagado_manual fue ELIMINADO como fuente de verdad: la cadena
+    // semanal (report_entries) es la ÚNICA fuente del total pagado. Los pagos
+    // se registran vía Relación Semanal / Reportes de Avance, no aquí.
+    const { valor_presupuesto, notes } = req.body;
     const names = await db.query(`
       SELECT p.name AS project_name, c.name AS contractor_name
       FROM projects p, contractors c
@@ -178,27 +178,21 @@ router.put('/:id/contractors/:cid', async (req, res) => {
     await db.query(`
       UPDATE contractor_project_budgets
          SET valor_presupuesto = COALESCE($1, valor_presupuesto),
-             notes             = COALESCE($2, notes),
-             total_pagado_manual = $3
-       WHERE contractor_id = $4 AND project_id = $5
-    `, [valor_presupuesto ?? null, notes ?? null, total_pagado_manual ?? null, req.params.cid, req.params.id]);
-    
+             notes             = COALESCE($2, notes)
+       WHERE contractor_id = $3 AND project_id = $4
+    `, [valor_presupuesto ?? null, notes ?? null, req.params.cid, req.params.id]);
+
     // Si se actualizó el valor_presupuesto, actualizar VP en relaciones semanales
     if (valor_presupuesto !== undefined && valor_presupuesto !== null) {
       await updateVPForExtras(req.params.cid, req.params.id);
     }
+    // ⛔ recalcCurrentWeekEntry eliminado — ya no existe el cache manual que
+    // sincronizar; la cadena semanal es la única fuente de verdad.
 
-    // 🔒 Si se actualizó el pago manual (total_pagado_manual), recalcular la
-    // entrada de la SEMANA EN CURSO con el estado real, para que PROYECTOS y
-    // Relación Semanal nunca diverjan (semana abierta; históricas intactas).
-    if (total_pagado_manual !== undefined) {
-      await recalcCurrentWeekEntry(req.params.cid, req.params.id);
-    }
-    
     if (names.rows[0]) {
       await req.logAudit('UPDATE_VP', 'contractor_project', null,
         `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
-        { valor_presupuesto, notes, total_pagado_manual });
+        { valor_presupuesto, notes });
     }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

@@ -16,7 +16,6 @@ export default function ProjectDetail() {
   const [showExtras, setShowExtras] = useState(null); // { contractor_id, contractor_name }
   const [assignForm, setAssignForm] = useState({ contractor_id: '', valor_presupuesto: 0 });
   const [budgetVal, setBudgetVal] = useState(0);
-  const [pagadoVal, setPagadoVal] = useState(0);
 
   const load = () => {
     setLoading(true);
@@ -43,9 +42,10 @@ export default function ProjectDetail() {
 
   const handleUpdateVP = async () => {
     try {
-      await axios.put(`/api/projects/${id}/contractors/${editBudget.contractor_id}`, { 
-        valor_presupuesto: budgetVal,
-        total_pagado_manual: pagadoVal
+      // 🔒 total_pagado_manual eliminado: el total pagado se calcula desde la
+      // cadena semanal (única fuente de verdad) y ya no es editable aquí.
+      await axios.put(`/api/projects/${id}/contractors/${editBudget.contractor_id}`, {
+        valor_presupuesto: budgetVal
       });
       toast.success('Valores actualizados');
       setEditBudget(null);
@@ -148,7 +148,6 @@ export default function ProjectDetail() {
                         onClick={() => { 
                           setEditBudget(c); 
                           setBudgetVal(c.valor_presupuesto); 
-                          setPagadoVal(c.total_pagado || 0);
                         }}
                         className="text-gray-400 hover:text-accent transition-colors"
                       ><Pencil size={14} /></button>
@@ -236,11 +235,12 @@ export default function ProjectDetail() {
               </p>
             </div>
             <div>
-              <label className="block text-sm text-gray-500 mb-1">Total Pagado</label>
-              <input type="number" className="input-field" value={pagadoVal}
-                onChange={e => setPagadoVal(Number(e.target.value))} />
+              <label className="block text-sm text-gray-500 mb-1">Total Pagado (calculado)</label>
+              <input type="text" readOnly className="input-field bg-gray-100 text-gray-500 cursor-not-allowed"
+                value={mxn(editBudget.total_pagado || 0)} />
               <p className="text-xs text-gray-400 mt-1">
-                Monto total que se ha pagado a este contratista en este proyecto.
+                Solo lectura: se calcula automáticamente desde la Relación Semanal.
+                Registra pagos en la Relación Semanal o con un Reporte de Avance.
               </p>
             </div>
             <div className="flex gap-3 justify-end">

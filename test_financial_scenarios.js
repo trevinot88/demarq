@@ -51,14 +51,17 @@ const approx = (a, b) => Math.abs(a - b) < 0.01;
     check('saldo = 20000', approx(s.saldo, 20000));
   }
 
-  // ── ESCENARIO 2: Pagado manual 10,000 → nueva semana → NO saldo 20,000
-  console.log('\nESCENARIO 2: pago manual de 10,000 registrado en PROYECTOS');
+  // ── ESCENARIO 2: pago manual migrado a la cadena → nueva semana → NO saldo 20,000
+  // (antes se usaba total_pagado_manual; ahora el pago se registra en la cadena)
+  console.log('\nESCENARIO 2: pago de 10,000 registrado en la cadena (semana 1)');
   {
-    await db.query(
-      `UPDATE contractor_project_budgets SET total_pagado_manual = 10000 WHERE contractor_id=$1 AND project_id=$2`,
-      [cont.id, proj.id]);
+    const rid1 = (await db.query(
+      `SELECT id FROM weekly_reports WHERE week_date='2026-05-01'`)).rows[0].id;
+    await entry(rid1, 20000, 0, 10000); // vp=20000, ent=0, rep=10000
     const s = await getContractorFinancialState(cont.id, proj.id);
+    check('pagos acumulados = 10000', approx(s.pagos_acumulados, 10000));
     check('saldo = 10000', approx(s.saldo, 10000));
+    // Crear semana 2 como lo hace POST /api/reports (fuente única de verdad)
     const rid = await week('2026-05-08');
     await entry(rid, s.saldo, s.pagos_acumulados, 0);
     const { rows: [e] } = await db.query(
@@ -121,6 +124,29 @@ const approx = (a, b) => Math.abs(a - b) < 0.01;
       `SELECT vp FROM report_entries re JOIN weekly_reports wr ON wr.id=re.report_id
        WHERE wr.week_date='2026-05-22' AND contractor_id=$1`, [cont.id]);
     check('ninguna semana volvió a vp=20000', first.vp < 20000, `vp=${first.vp}`);
+  }
+
+  // ── ESCENARIO 6: EL BUG REPORTADO — rep en semana N debe heredar a N+1
+  console.log('\nESCENARIO 6: herencia canónica ent_{n+1} = ent_n + rep_n (bug de semanas)');
+  {
+    // Semana 2026-06-12 con entrada heredada (ent=saldo previo, rep=2500)
+    const s0 = await getContractorFinancialState(cont.id, proj.id);
+    const ridN = await week('2026-06-12');
+    await entry(ridN, s0.saldo, s0.pagos_acumulados, 2500);
+    // Crear semana siguiente vía fuente única de verdad (como POST /api/reports)
+    const s1 = await getContractorFinancialState(cont.id, proj.id);
+    check('tras rep=2500, pagos acumulados suben', approx(s1.pagos_acumulados, s0.pagos_acumulados + 2500),
+      `acum=${s1.pagos_acumulados}`);
+    const ridNext = await week('2026-06-19');
+    await entry(ridNext, s1.saldo, s1.pagos_acumulados, 0);
+    const { rows: [eNext] } = await db.query(
+      `SELECT vp, ent_a_cta FROM report_entries WHERE report_id=$1 AND contractor_id=$2`,
+      [ridNext, cont.id]);
+    const expectedEnt = s0.pagos_acumulados + 2500;
+    check(`ent de semana siguiente = ${expectedEnt} (heredó el rep)`,
+      approx(eNext.ent_a_cta, expectedEnt), `ent=${eNext.ent_a_cta}`);
+    check('vp de semana siguiente = saldo previo − rep', approx(eNext.vp, s1.saldo),
+      `vp=${eNext.vp} esperado=${s1.saldo}`);
   }
 
   console.log(failures === 0 ? '\n✅ TODOS LOS ESCENARIOS PASARON' : `\n⛔ ${failures} FALLA(S)`);

@@ -165,16 +165,19 @@ router.post('/:id/pasar', async (req, res) => {
     const amount = ar.amount_accepted ?? ar.amount_reported;
 
     // Upsert en report_entries
-    // 🔒 Si se crea una entrada nueva (el contratista no estaba en esa semana),
-    // el vp se calcula con la fuente única de verdad: VP_TOTAL − PAGOS_ACUMULADOS.
+    // 🔒 Fuente única de verdad: VP_TOTAL − PAGOS_ACUMULADOS (cadena semanal).
+    // ⛔ FIX: si se crea una entrada NUEVA (el par no estaba en esa semana),
+    // ent_a_cta DEBE heredar los pagos acumulados previos. Antes se insertaba
+    // con 0 y la siguiente semana perdía todo el historial del par.
     const state = await getContractorFinancialState(ar.contractor_id, ar.project_id);
     const vpInicial = state ? state.saldo : 0;
+    const entInicial = state ? state.pagos_acumulados : 0;
     await db.query(`
       INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
-      VALUES ($1, $2, $3, $4, 0, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (report_id, contractor_id, project_id)
       DO UPDATE SET rep_a_cta = report_entries.rep_a_cta + EXCLUDED.rep_a_cta
-    `, [weekly_report_id, ar.contractor_id, ar.project_id, vpInicial, amount,
+    `, [weekly_report_id, ar.contractor_id, ar.project_id, vpInicial, entInicial, amount,
         `Reporte #${ar.id} — ${ar.description || ''}`]);
 
     // Marcar como pasado

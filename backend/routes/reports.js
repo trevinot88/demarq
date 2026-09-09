@@ -218,8 +218,9 @@ router.post('/', async (req, res) => {
 
     // 🔒 PUNTO 4 — Fuente única de verdad (backend/finance.js):
     // Cada nueva semana parte del ESTADO FINANCIERO REAL ACUMULADO del par
-    // (contratista, proyecto): VP_TOTAL (base + extras) − PAGOS_ACUMULADOS
-    // (total_pagado_manual si existe, o ent+rep de la entrada más reciente).
+    // (contratista, proyecto): VP_TOTAL (base + extras) − PAGOS_ACUMULADOS,
+    // donde PAGOS_ACUMULADOS proviene EXCLUSIVAMENTE de la cadena semanal
+    // (ent+rep de la entrada más reciente).
     // La semana anterior sigue siendo la referencia preferida cuando existe,
     // pero NUNCA se reinicia al presupuesto base si falta una semana intermedia.
     const { rows: pairs } = await client.query(`
