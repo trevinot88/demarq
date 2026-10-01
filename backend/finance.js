@@ -26,7 +26,7 @@
  *   registran a través de la Relación Semanal (o migrados a ella).
  *
  * Semántica de columnas en report_entries (snapshot histórico inmutable):
- *   vp       = saldo al INICIO de la semana
+ *   vp       = presupuesto total (VP_TOTAL = base + extras) — columna "V.P."
  *   ent_a_cta= pagos acumulados a la fecha (al inicio de la semana)
  *   rep_a_cta= reportado/pagado dentro de la semana
  */
@@ -64,4 +64,73 @@ async function getContractorFinancialState(contractorId, projectId, client = nul
   };
 }
 
-module.exports = { getContractorFinancialState };
+/**
+ * 🔒 SINCRONIZACIÓN PROYECTOS → CADENA SEMANAL (edición del "total pagado").
+ *
+ * Cuando el usuario edita el "Pagado" desde PROYECTOS, el valor se escribe en
+ * la entrada de la SEMANA MÁS RECIENTE ajustando `rep_a_cta` (lo pagado dentro
+ * de esa semana) para que ent_a_cta + rep_a_cta = pagado.
+ *
+ * Se mantiene `ent_a_cta` (historia acumulada) intacto, preservando el
+ * invariante de la cadena: ent(última) = SUM(rep de semanas previas). Así el
+ * total pagado coincide en PROYECTOS (ent+rep), CONTRATISTA (SUM rep) y
+ * DASHBOARD, y la semana siguiente hereda ent = pagado automáticamente.
+ */
+async function syncManualPayment(contractorId, projectId, pagado, client = null) {
+  const conn = client || db.pool;
+  const state = await getContractorFinancialState(contractorId, projectId, conn);
+  if (!state) {
+    return { ok: false, error: 'No hay presupuesto asignado a este contratista/proyecto.' };
+  }
+
+  const pagadoNum = Number(pagado);
+  if (!Number.isFinite(pagadoNum) || pagadoNum < 0) {
+    return { ok: false, error: 'El total pagado debe ser un número mayor o igual a 0.' };
+  }
+
+  const { rows: [latestWeek] } = await conn.query(`
+    SELECT id FROM weekly_reports
+    WHERE week_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    ORDER BY TO_DATE(week_date, 'YYYY-MM-DD') DESC
+    LIMIT 1
+  `);
+  if (!latestWeek) {
+    return { ok: false, error: 'Aún no hay ninguna semana en la Relación Semanal. Crea una semana primero para poder registrar pagos.' };
+  }
+
+  const { rows: [entry] } = await conn.query(`
+    SELECT id, ent_a_cta FROM report_entries
+    WHERE report_id = $1 AND contractor_id = $2 AND project_id = $3
+  `, [latestWeek.id, contractorId, projectId]);
+
+  if (entry) {
+    const ent = Number(entry.ent_a_cta) || 0;
+    const rep = pagadoNum - ent;
+    if (rep < 0) {
+      return {
+        ok: false,
+        error: `El total pagado no puede ser menor que lo ya acumulado ($${ent.toLocaleString('es-MX')}). Corrige la semana correspondiente en la Relación Semanal.`,
+      };
+    }
+    await conn.query(`UPDATE report_entries SET rep_a_cta = $1 WHERE id = $2`, [rep, entry.id]);
+  } else {
+    const ent = state.pagos_acumulados || 0;
+    const rep = pagadoNum - ent;
+    if (rep < 0) {
+      return {
+        ok: false,
+        error: `El total pagado no puede ser menor que lo ya acumulado ($${ent.toLocaleString('es-MX')}). Corrige la semana correspondiente en la Relación Semanal.`,
+      };
+    }
+    await conn.query(`
+      INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, '')
+      ON CONFLICT (report_id, contractor_id, project_id)
+      DO UPDATE SET rep_a_cta = EXCLUDED.rep_a_cta
+    `, [latestWeek.id, contractorId, projectId, state.vp_total, ent, rep]);
+  }
+
+  return { ok: true };
+}
+
+module.exports = { getContractorFinancialState, syncManualPayment };

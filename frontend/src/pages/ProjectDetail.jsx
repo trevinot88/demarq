@@ -16,6 +16,7 @@ export default function ProjectDetail() {
   const [showExtras, setShowExtras] = useState(null); // { contractor_id, contractor_name }
   const [assignForm, setAssignForm] = useState({ contractor_id: '', valor_presupuesto: 0 });
   const [budgetVal, setBudgetVal] = useState(0);
+  const [pagadoVal, setPagadoVal] = useState(0);
 
   const load = () => {
     setLoading(true);
@@ -41,16 +42,25 @@ export default function ProjectDetail() {
   };
 
   const handleUpdateVP = async () => {
+    const body = {};
+    if (Number(budgetVal) !== Number(editBudget.valor_presupuesto || 0)) {
+      body.valor_presupuesto = budgetVal;
+    }
+    if (Number(pagadoVal) !== Number(editBudget.total_pagado || 0)) {
+      body.total_pagado = pagadoVal;
+    }
+    if (Object.keys(body).length === 0) {
+      setEditBudget(null);
+      return;
+    }
     try {
-      // 🔒 total_pagado_manual eliminado: el total pagado se calcula desde la
-      // cadena semanal (única fuente de verdad) y ya no es editable aquí.
-      await axios.put(`/api/projects/${id}/contractors/${editBudget.contractor_id}`, {
-        valor_presupuesto: budgetVal
-      });
+      await axios.put(`/api/projects/${id}/contractors/${editBudget.contractor_id}`, body);
       toast.success('Valores actualizados');
       setEditBudget(null);
       load();
-    } catch { toast.error('Error al actualizar'); }
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Error al actualizar');
+    }
   };
 
   const handleRemoveContractor = async (cid, name) => {
@@ -148,6 +158,7 @@ export default function ProjectDetail() {
                         onClick={() => { 
                           setEditBudget(c); 
                           setBudgetVal(c.valor_presupuesto); 
+                          setPagadoVal(c.total_pagado || 0); 
                         }}
                         className="text-gray-400 hover:text-accent transition-colors"
                       ><Pencil size={14} /></button>
@@ -227,20 +238,27 @@ export default function ProjectDetail() {
         <Modal title={`Editar — ${editBudget.contractor_name}`} onClose={() => setEditBudget(null)} size="sm">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-500 mb-1">V.P. Base</label>
-              <input type="number" className="input-field" value={budgetVal}
+              <label className="block text-sm text-gray-500 mb-1">Presupuesto (V.P. Base)</label>
+              <input type="number" min="0" step="any" className="input-field" value={budgetVal}
                 onChange={e => setBudgetVal(Number(e.target.value))} />
               <p className="text-xs text-gray-400 mt-1">
-                Este es el presupuesto base. Los extras se gestionan por separado.
+                Presupuesto base del proyecto. Los extras se gestionan por separado.
               </p>
             </div>
             <div>
-              <label className="block text-sm text-gray-500 mb-1">Total Pagado (calculado)</label>
-              <input type="text" readOnly className="input-field bg-gray-100 text-gray-500 cursor-not-allowed"
-                value={mxn(editBudget.total_pagado || 0)} />
+              <label className="block text-sm text-gray-500 mb-1">Pagado</label>
+              <input type="number" min="0" step="any" className="input-field" value={pagadoVal}
+                onChange={e => setPagadoVal(Number(e.target.value))} />
               <p className="text-xs text-gray-400 mt-1">
-                Solo lectura: se calcula automáticamente desde la Relación Semanal.
-                Registra pagos en la Relación Semanal o con un Reporte de Avance.
+                Total pagado a la fecha. Se sincroniza con la semana más reciente de la Relación Semanal.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">Saldo (resta)</label>
+              <input type="text" readOnly className="input-field bg-gray-100 text-gray-500 cursor-not-allowed"
+                value={mxn((Number(budgetVal) || 0) + (Number(editBudget.total_extras) || 0) - (Number(pagadoVal) || 0))} />
+              <p className="text-xs text-gray-400 mt-1">
+                Calculado: Presupuesto total (base + extras) − Pagado.
               </p>
             </div>
             <div className="flex gap-3 justify-end">

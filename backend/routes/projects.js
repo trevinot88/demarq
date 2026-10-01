@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const db = require('../db');
 const { updateVPForExtras } = require('./reports');
+const { syncManualPayment } = require('../finance');
 
 // GET /api/projects
 router.get('/', async (req, res) => {
@@ -166,10 +167,10 @@ router.post('/:id/contractors', async (req, res) => {
 // PUT /api/projects/:id/contractors/:cid
 router.put('/:id/contractors/:cid', async (req, res) => {
   try {
-    // 🔒 total_pagado_manual fue ELIMINADO como fuente de verdad: la cadena
-    // semanal (report_entries) es la ÚNICA fuente del total pagado. Los pagos
-    // se registran vía Relación Semanal / Reportes de Avance, no aquí.
-    const { valor_presupuesto, notes } = req.body;
+    // 🔒 La cadena semanal (report_entries) es la ÚNICA fuente del total pagado.
+    // "Pagado" se edita aquí y se sincroniza a la semana más reciente vía
+    // syncManualPayment (sin cache congelado; se ajusta rep_a_cta).
+    const { valor_presupuesto, notes, total_pagado } = req.body;
     const names = await db.query(`
       SELECT p.name AS project_name, c.name AS contractor_name
       FROM projects p, contractors c
@@ -186,13 +187,19 @@ router.put('/:id/contractors/:cid', async (req, res) => {
     if (valor_presupuesto !== undefined && valor_presupuesto !== null) {
       await updateVPForExtras(req.params.cid, req.params.id);
     }
-    // ⛔ recalcCurrentWeekEntry eliminado — ya no existe el cache manual que
-    // sincronizar; la cadena semanal es la única fuente de verdad.
+
+    // 🔒 Edición directa del total pagado: sincronizar con la cadena semanal.
+    if (total_pagado !== undefined && total_pagado !== null) {
+      const sync = await syncManualPayment(req.params.cid, req.params.id, total_pagado);
+      if (!sync.ok) {
+        return res.status(400).json({ error: sync.error });
+      }
+    }
 
     if (names.rows[0]) {
       await req.logAudit('UPDATE_VP', 'contractor_project', null,
         `${names.rows[0].contractor_name} → ${names.rows[0].project_name}`,
-        { valor_presupuesto, notes });
+        { valor_presupuesto, notes, total_pagado });
     }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

@@ -18,9 +18,9 @@ const { getContractorFinancialState } = require('../finance');
 async function updateVPForExtras(contractorId, projectId, client = null) {
   const conn = client || db.pool;
   try {
-    // 🔒 Fuente única de verdad: VP de la semana en curso =
-    //    VP_TOTAL (base + extras) − PAGOS_ACUMULADOS.
-    //    NUNCA el VP_TOTAL plano (eso borraba el efecto de los pagos).
+    // 🔒 Fuente única de verdad: VP de la semana en curso = VP_TOTAL (base + extras).
+    //    `vp` en report_entries representa el PRESUPUESTO (columna "V.P."); el
+    //    saldo se deriva en la vista como vp − ent_a_cta − rep_a_cta.
     const state = await getContractorFinancialState(contractorId, projectId, conn);
     if (!state) return;
 
@@ -39,7 +39,7 @@ async function updateVPForExtras(contractorId, projectId, client = null) {
               WHERE w2.week_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
             )
         )
-    `, [state.saldo, contractorId, projectId]);
+    `, [state.vp_total, contractorId, projectId]);
   } catch (err) {
     console.error('Error updating VP for extras:', err.message);
   }
@@ -239,7 +239,7 @@ router.post('/', async (req, res) => {
       if (!state) continue; // sin presupuesto asignado: nada que heredar
 
       let ent_a_cta = state.pagos_acumulados; // pagos acumulados a la fecha
-      let vp = state.saldo;                   // saldo pendiente real
+      let vp = state.vp_total;                // presupuesto total (columna V.P.)
       let source = 'STATE';
 
       if (prev) {
@@ -255,7 +255,7 @@ router.post('/', async (req, res) => {
           // coincide (mismo cálculo por construcción). Si difieren, gana el
           // estado acumulado real (fuente única de verdad).
           ent_a_cta = state.pagos_acumulados;
-          vp = state.saldo;
+          vp = state.vp_total;
           source = 'STATE';
           console.log(`    [STATE] contractor=${contractor_id} project=${project_id}: ent=${ent_a_cta}, vp=${vp} (prev-chain daba vp=${prevVp})`);
         }
@@ -371,12 +371,12 @@ router.post('/:id/entries', async (req, res) => {
   const { contractor_id, project_id, ent_a_cta = 0, rep_a_cta = 0, notes = '', vp } = req.body;
   if (!contractor_id || !project_id) return res.status(400).json({ error: 'contractor_id y project_id requeridos' });
   try {
-    // 🔒 Fuente única de verdad: si no envían vp, calcularlo como
-    // VP_TOTAL − PAGOS_ACUMULADOS (mismo cálculo que al crear la semana).
+    // 🔒 Fuente única de verdad: si no envían vp, usar el PRESUPUESTO TOTAL
+    // (VP_TOTAL = base + extras), que es lo que la columna "V.P." representa.
     let vpInicial = vp;
     if (vpInicial === undefined || vpInicial === null) {
       const state = await getContractorFinancialState(contractor_id, project_id);
-      vpInicial = state ? state.saldo : 0;
+      vpInicial = state ? state.vp_total : 0;
     }
     // ⛔ Sin escritura inversa: el vp NO se guarda en valor_presupuesto.
     const { rows } = await db.query(`

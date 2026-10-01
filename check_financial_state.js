@@ -8,9 +8,9 @@
  *
  * Reglas validadas:
  *   R1: la entrada de la semana más reciente debe tener
- *       vp ≈ SALDO y ent_a_cta ≈ PAGOS (estado al inicio de la semana).
- *   R2: vp nunca debe ser igual a VP_TOTAL cuando existen pagos acumulados
- *       (síntoma del bug "saldo reiniciado").
+ *       ent_a_cta ≈ PAGOS_ACUMULADOS − rep_a_cta (pagos antes de esa semana).
+ *   R2: vp debe ser ≈ VP_TOTAL (presupuesto total); la columna "V.P." muestra
+ *       el presupuesto y el saldo se deriva como vp − ent_a_cta − rep_a_cta.
  *
  * Uso: node check_financial_state.js
  */
@@ -56,14 +56,11 @@ const { getContractorFinancialState } = require('./backend/finance');
         problems++;
         console.log(`  ❌ R1: ent_a_cta=${last.ent_a_cta} pero los pagos previos eran ${pagosPrevios}`);
       }
-      const vpEsperado = state.vp_total - pagosPrevios;
+      const vpEsperado = state.vp_total;
       if (Math.abs(last.vp - vpEsperado) > 0.01) {
         problems++;
-        console.log(`  ❌ R2: vp=${last.vp} pero debería ser ${vpEsperado} (¿saldo reiniciado al VP original?)`);
+        console.log(`  ❌ R2: vp=${last.vp} pero debería ser el presupuesto ${vpEsperado}`);
       }
-      // Síntoma del bug: vp = VP_TOTAL cuando SÍ había pagos ANTES de la semana.
-      // (Si vp=VP_TOTAL pero ent=0, el pago se registró dentro de la semana y
-      // es correcto: vp es el saldo al INICIO de la semana.)
     }
 
     console.log(problems === 0

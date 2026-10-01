@@ -5,7 +5,7 @@
  * Uso: DATABASE_URL=postgres://... node test_financial_scenarios.js
  */
 const db = require('./backend/db');
-const { getContractorFinancialState } = require('./backend/finance');
+const { getContractorFinancialState, syncManualPayment } = require('./backend/finance');
 const { updateVPForExtras } = require('./backend/routes/reports');
 
 let failures = 0;
@@ -63,11 +63,11 @@ const approx = (a, b) => Math.abs(a - b) < 0.01;
     check('saldo = 10000', approx(s.saldo, 10000));
     // Crear semana 2 como lo hace POST /api/reports (fuente única de verdad)
     const rid = await week('2026-05-08');
-    await entry(rid, s.saldo, s.pagos_acumulados, 0);
+    await entry(rid, s.vp_total, s.pagos_acumulados, 0);
     const { rows: [e] } = await db.query(
       `SELECT * FROM report_entries WHERE report_id=$1 AND contractor_id=$2`,
       [rid, cont.id]);
-    check('nueva semana vp=10000 (NO 20000)', approx(e.vp, 10000), `vp=${e.vp}`);
+    check('nueva semana vp=20000 (presupuesto)', approx(e.vp, 20000), `vp=${e.vp}`);
     check('nueva semana ent=10000', approx(e.ent_a_cta, 10000));
   }
 
@@ -80,10 +80,10 @@ const approx = (a, b) => Math.abs(a - b) < 0.01;
     check('pagos acumulados = 14000', approx(s.pagos_acumulados, 14000), `pagos=${s.pagos_acumulados}`);
     check('saldo = 6000', approx(s.saldo, 6000));
     const rid = await week('2026-05-15');
-    await entry(rid, s.saldo, s.pagos_acumulados, 0);
+    await entry(rid, s.vp_total, s.pagos_acumulados, 0);
     const { rows: [e] } = await db.query(
       `SELECT * FROM report_entries WHERE report_id=$1`, [rid]);
-    check('semana siguiente vp=6000, ent=14000', approx(e.vp, 6000) && approx(e.ent_a_cta, 14000), `vp=${e.vp} ent=${e.ent_a_cta}`);
+    check('semana siguiente vp=20000 (presupuesto), ent=14000', approx(e.vp, 20000) && approx(e.ent_a_cta, 14000), `vp=${e.vp} ent=${e.ent_a_cta}`);
   }
 
   // ── ESCENARIO 4: modificar presupuesto no altera semana histórica
@@ -101,7 +101,7 @@ const approx = (a, b) => Math.abs(a - b) < 0.01;
     const cur = (await db.query(
       `SELECT vp FROM report_entries re JOIN weekly_reports wr ON wr.id=re.report_id
        WHERE wr.week_date='2026-05-15' AND contractor_id=$1`, [cont.id])).rows[0];
-    check('semana en curso recalculada vp=11000', approx(cur.vp, 11000), `vp=${cur.vp}`);
+    check('semana en curso recalculada vp=25000 (presupuesto)', approx(cur.vp, 25000), `vp=${cur.vp}`);
   }
 
   // ── ESCENARIO 5: varias semanas consecutivas nunca reinician al VP original
@@ -116,14 +116,14 @@ const approx = (a, b) => Math.abs(a - b) < 0.01;
       }
       lastSaldo = s.saldo;
       const rid = await week(date);
-      await entry(rid, s.saldo, s.pagos_acumulados, rep);
+      await entry(rid, s.vp_total, s.pagos_acumulados, rep);
     }
     const s = await getContractorFinancialState(cont.id, proj.id);
     check('saldo final = 1000 (nunca se reinició)', approx(s.saldo, 1000), `saldo=${s.saldo}`);
     const { rows: [first] } = await db.query(
       `SELECT vp FROM report_entries re JOIN weekly_reports wr ON wr.id=re.report_id
        WHERE wr.week_date='2026-05-22' AND contractor_id=$1`, [cont.id]);
-    check('ninguna semana volvió a vp=20000', first.vp < 20000, `vp=${first.vp}`);
+    check('vp se mantiene = presupuesto (20000)', approx(first.vp, 20000), `vp=${first.vp}`);
   }
 
   // ── ESCENARIO 6: EL BUG REPORTADO — rep en semana N debe heredar a N+1
@@ -132,21 +132,65 @@ const approx = (a, b) => Math.abs(a - b) < 0.01;
     // Semana 2026-06-12 con entrada heredada (ent=saldo previo, rep=2500)
     const s0 = await getContractorFinancialState(cont.id, proj.id);
     const ridN = await week('2026-06-12');
-    await entry(ridN, s0.saldo, s0.pagos_acumulados, 2500);
+    await entry(ridN, s0.vp_total, s0.pagos_acumulados, 2500);
     // Crear semana siguiente vía fuente única de verdad (como POST /api/reports)
     const s1 = await getContractorFinancialState(cont.id, proj.id);
     check('tras rep=2500, pagos acumulados suben', approx(s1.pagos_acumulados, s0.pagos_acumulados + 2500),
       `acum=${s1.pagos_acumulados}`);
     const ridNext = await week('2026-06-19');
-    await entry(ridNext, s1.saldo, s1.pagos_acumulados, 0);
+    await entry(ridNext, s1.vp_total, s1.pagos_acumulados, 0);
     const { rows: [eNext] } = await db.query(
       `SELECT vp, ent_a_cta FROM report_entries WHERE report_id=$1 AND contractor_id=$2`,
       [ridNext, cont.id]);
     const expectedEnt = s0.pagos_acumulados + 2500;
     check(`ent de semana siguiente = ${expectedEnt} (heredó el rep)`,
       approx(eNext.ent_a_cta, expectedEnt), `ent=${eNext.ent_a_cta}`);
-    check('vp de semana siguiente = saldo previo − rep', approx(eNext.vp, s1.saldo),
-      `vp=${eNext.vp} esperado=${s1.saldo}`);
+    check('vp de semana siguiente = presupuesto total', approx(eNext.vp, s1.vp_total),
+      `vp=${eNext.vp} esperado=${s1.vp_total}`);
+  }
+
+  // ── ESCENARIO 7: edición directa del "pagado" desde PROYECTOS ────────────────
+  console.log('\nESCENARIO 7: editar "pagado" directo sincroniza la cadena (fuente única)');
+  {
+    // Par independiente para no depender del estado acumulado previo
+    const { rows: [proj2] } = await db.query(`INSERT INTO projects (name) VALUES ('TEST PAGADO DIRECTO') RETURNING id`);
+    const { rows: [cont2] } = await db.query(`INSERT INTO contractors (name) VALUES ('TEST CONTRATISTA PAGADO') RETURNING id`);
+    await db.query(
+      `INSERT INTO contractor_project_budgets (contractor_id, project_id, valor_presupuesto) VALUES ($1,$2,50000)`,
+      [cont2.id, proj2.id]);
+    const rid = await week('2026-07-03');
+    await db.query(
+      `INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
+       VALUES ($1,$2,$3,50000,0,0,'')`,
+      [rid, cont2.id, proj2.id]);
+
+    // Editar "pagado" a 12000 → debe quedar ent=0, rep=12000 en la semana reciente
+    const r = await syncManualPayment(cont2.id, proj2.id, 12000);
+    check('syncManualPayment ok', r.ok === true, JSON.stringify(r));
+    const s = await getContractorFinancialState(cont2.id, proj2.id);
+    check('pagos acumulados = 12000', approx(s.pagos_acumulados, 12000), `pagos=${s.pagos_acumulados}`);
+    check('saldo = 38000', approx(s.saldo, 38000), `saldo=${s.saldo}`);
+
+    // Consistencia: SUM(rep_a_cta) de todas las semanas debe ser 12000 (Contratista)
+    const { rows: [tot] } = await db.query(
+      `SELECT COALESCE(SUM(rep_a_cta),0)::float AS total FROM report_entries WHERE contractor_id=$1 AND project_id=$2`,
+      [cont2.id, proj2.id]);
+    check('SUM(rep_a_cta) = 12000 (Contratista consistente)', approx(Number(tot.total), 12000), `sum=${tot.total}`);
+
+    // Hereda a la semana siguiente
+    const s1 = await getContractorFinancialState(cont2.id, proj2.id);
+    const ridNext = await week('2026-07-10');
+    await db.query(
+      `INSERT INTO report_entries (report_id, contractor_id, project_id, vp, ent_a_cta, rep_a_cta, notes)
+       VALUES ($1,$2,$3,$4,$5,0,'')`,
+      [ridNext, cont2.id, proj2.id, s1.vp_total, s1.pagos_acumulados]);
+    const { rows: [eNext] } = await db.query(
+      `SELECT ent_a_cta FROM report_entries WHERE report_id=$1 AND contractor_id=$2`, [ridNext, cont2.id]);
+    check('semana siguiente hereda ent=12000', approx(Number(eNext.ent_a_cta), 12000), `ent=${eNext.ent_a_cta}`);
+
+    // Intentar reducir por debajo de lo acumulado debe fallar
+    const rLow = await syncManualPayment(cont2.id, proj2.id, 5000);
+    check('reducir debajo de acumulado falla', rLow.ok === false, JSON.stringify(rLow));
   }
 
   console.log(failures === 0 ? '\n✅ TODOS LOS ESCENARIOS PASARON' : `\n⛔ ${failures} FALLA(S)`);
