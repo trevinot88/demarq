@@ -31,7 +31,7 @@ const APPLY = process.argv.includes('--apply');
     const s = await getContractorFinancialState(e.contractor_id, e.project_id);
     if (!s) continue;
     const newEnt = s.pagos_acumulados - e.rep_a_cta; // pagos previos a esta semana
-    const newVp  = s.vp_total - newEnt;
+    const newVp  = s.vp_total;                       // presupuesto total (columna V.P.)
     if (approx(e.vp, newVp) && approx(e.ent_a_cta, newEnt)) {
       console.log(`  OK   entry ${e.id}: vp=${e.vp} ent=${e.ent_a_cta}`);
       continue;

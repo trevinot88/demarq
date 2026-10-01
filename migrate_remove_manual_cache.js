@@ -91,7 +91,7 @@ const fmt = (n) => '$' + Number(n || 0).toLocaleString('es-MX');
 
       if (entry) {
         const newRep = (Number(entry.rep_a_cta) || 0) + diff;
-        const newVp = vpTotal - (Number(entry.ent_a_cta) || 0);
+        const newVp = vpTotal; // presupuesto total (columna V.P.)
         console.log(`  ↺ ${label}: cadena=${fmt(acumulado)} → ${fmt(manual)} (rep ${fmt(entry.rep_a_cta)} → ${fmt(newRep)}, vp → ${fmt(newVp)}) [semana ${latestWeek.week_date}]`);
         if (APPLY) {
           await client.query(
@@ -101,7 +101,7 @@ const fmt = (n) => '$' + Number(n || 0).toLocaleString('es-MX');
         }
         migrated++;
       } else {
-        const vpInicial = vpTotal - manual;
+        const vpInicial = vpTotal; // presupuesto total (columna V.P.)
         console.log(`  + ${label}: SIN entrada en semana ${latestWeek.week_date} → se crea con rep=${fmt(manual)}, ent=0, vp=${fmt(vpInicial)}`);
         if (APPLY) {
           await client.query(`
